@@ -16,6 +16,7 @@ Read the current product context, issue, existing architecture, and affected cod
 - Present proportionate options with trade-offs, including reversibility, operational cost, observability, and migration or rollback implications.
 - Record a durable decision or contract in `docs/decisions/` only when it needs to survive the current issue or pull request.
 - Define the verification and rollout evidence needed for the actual risk.
+- Use the `quality-release` assessment to help the developer and QA lead choose and, when useful, author a focused test-first loop for deterministic high-risk behavior.
 - Escalate when implementation reveals an invalid assumption or an expanded blast radius; re-plan before continuing.
 
 Architecture work is optional for low-risk, known-pattern changes. Deployment is always target-specific and requires explicit approval.

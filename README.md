@@ -51,22 +51,28 @@ The role briefs in [`agents/`](agents/) are specialist perspectives, not an obli
 
 ## Start a product with a pinned kit version
 
-From the product repository, copy the shared context and record the kit revision that supplied it:
+From the workflow kit checkout, install the shared context and selected skills into an existing product repository:
 
 ```bash
-# WORKFLOW_KIT points to your reviewed local checkout of this repository
-cp -R "$WORKFLOW_KIT/templates/product/." .
-git -C "$WORKFLOW_KIT" rev-parse HEAD
-# Replace {{WORKFLOW_KIT_VERSION}} and {{DATE}} in PRODUCT.md with that value and today's date.
+./scripts/install.sh --target ../my-product --runtime claude
 ```
 
-Then fill the outcome, user, scope, non-goals, constraints, and success signal in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
+The installer copies the product context, records the current kit Git commit and date in `PRODUCT.md`, and installs the five core skills locally. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
+
+Choose a different or additional runtime deliberately:
+
+```bash
+./scripts/install.sh --target ../my-product --runtime codex --runtime opencode
+./scripts/install.sh --target ../my-product --runtime claude --skill kickoff --skill feature
+```
+
+Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, and success signal in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
 
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
 
-## Add the portable skills locally
+## Manual installation
 
-Install only the skills a product needs. The following examples use project-local copies so the product stays reproducible; symlinks are appropriate only when the project intentionally follows changes in a local kit checkout.
+Use the installer above for normal setup. The following project-local copy examples remain available for teams that need a deliberately custom installation; symlinks are appropriate only when the project intentionally follows changes in a local kit checkout.
 
 ### Claude Code
 

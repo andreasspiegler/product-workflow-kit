@@ -2,6 +2,8 @@
 
 V2 replaces the fixed seven-phase pipeline with risk-based orchestration. It preserves deliberate human gates, but removes mandatory handoffs, a global status file, and a design-tool chain that every product had to follow.
 
+The V1 `--scope nano|micro|standard|large` and `--from <phase>` flags are not supported by the V2 skills. Start from the current product context and state the risk triage in the conversation instead; then select only the activities needed to reduce that risk.
+
 ## Migration steps
 
 1. Add the files from `templates/product/` to the target product and fill in `PRODUCT.md`.

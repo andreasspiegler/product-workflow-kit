@@ -28,6 +28,7 @@ Do not invent a target user, a business case, a stack, or a deployment platform.
 With approval, create the product-local context from `templates/product/`:
 
 - `AGENTS.md` as the shared working agreement;
+- `CLAUDE.md` as the thin Claude Code adapter to that agreement;
 - `PRODUCT.md` as durable product context;
 - `DESIGN.md` when the product has an experience surface;
 - `docs/decisions/` only for decisions that must outlive an issue or pull request.

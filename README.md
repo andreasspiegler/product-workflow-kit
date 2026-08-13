@@ -41,6 +41,7 @@ The Git repository is the source of the kit. Each product uses a reviewed local 
 | --- | --- |
 | [`kickoff`](skills/kickoff/SKILL.md) | Starting a new product and creating credible, pinned product context. |
 | [`feature`](skills/feature/SKILL.md) | Extending an existing product from its current context and risk profile. |
+| [`requirements-quality`](skills/requirements-quality/SKILL.md) | Clarifying complex, high-impact, or uncertain requirements directly in their issue. |
 | [`product-design`](skills/product-design/SKILL.md) | User journeys, interaction direction, system decisions, UX/a11y review, and optional Impeccable usage. |
 | [`quality-release`](skills/quality-release/SKILL.md) | Proportionate tests, release readiness, rollout risk, and outcome checks. |
 | [`sot-builder`](skills/sot-builder/SKILL.md) | V2 compatibility name for durable decision and contract records. |
@@ -72,7 +73,8 @@ Install only the skills a product needs. The following examples use project-loca
 ```bash
 mkdir -p .claude/skills
 cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
-  "$WORKFLOW_KIT/skills/product-design" "$WORKFLOW_KIT/skills/quality-release" \
+  "$WORKFLOW_KIT/skills/requirements-quality" "$WORKFLOW_KIT/skills/product-design" \
+  "$WORKFLOW_KIT/skills/quality-release" \
   .claude/skills/
 ```
 
@@ -83,7 +85,8 @@ Use the role briefs only when the team wants Claude Code subagents, by adapting 
 ```bash
 mkdir -p .agents/skills
 cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
-  "$WORKFLOW_KIT/skills/product-design" "$WORKFLOW_KIT/skills/quality-release" \
+  "$WORKFLOW_KIT/skills/requirements-quality" "$WORKFLOW_KIT/skills/product-design" \
+  "$WORKFLOW_KIT/skills/quality-release" \
   .agents/skills/
 ```
 
@@ -94,7 +97,8 @@ Keep `AGENTS.md` in the product root. Configure only the Codex-specific agent, p
 ```bash
 mkdir -p .opencode/skills
 cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
-  "$WORKFLOW_KIT/skills/product-design" "$WORKFLOW_KIT/skills/quality-release" \
+  "$WORKFLOW_KIT/skills/requirements-quality" "$WORKFLOW_KIT/skills/product-design" \
+  "$WORKFLOW_KIT/skills/quality-release" \
   .opencode/skills/
 ```
 

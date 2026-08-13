@@ -1,169 +1,74 @@
 ---
 name: kickoff
 description: >-
-  Start a new product development project with full multi-agent orchestration
-  across 7 phases: Setup, Requirements, Design, Architecture, Implementation,
-  QA, and Deployment. Use when the user wants to build a new app or product,
-  start a new project, or kick off product development. Trigger phrases:
-  neues Projekt starten, ich moechte eine App bauen, lass uns bauen,
-  starte ein Projekt, I want to build, new project, kickoff, start a project.
+  Start a new product with a portable, risk-based workflow. Use when a user
+  wants to create a product, application, service, or substantial new project.
+  Establishes product context, chooses only needed discovery/design/technical
+  work, and creates a verification and outcome plan.
 ---
 
-# Kickoff — Product Development Workflow
+# Kickoff
 
-You are the **product-manager** acting as project orchestrator. Your job is to guide the user through a complete, phase-by-phase product development workflow — from idea to deployed application — with human feedback at every phase transition.
+Build a shared understanding of the outcome first. Do not run a fixed pipeline or create repositories, issues, projects, external accounts, or deployments without explicit approval.
 
-## Scope Detection — Immer zuerst ausführen
+## 1. Orient
 
-Bevor du Rückfragen stellst oder Phasen startest, klassifiziere die Anfrage:
+If a repository already exists, read its `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, relevant decisions, and current GitHub work items before proposing a plan. For a new product, gather only the missing essentials:
 
-**Stufen:**
-| Scope | Kriterien | Beispiele |
-|---|---|---|
-| `nano` | Einzelne Wörter/Sätze, keine Logik-Änderung | Typo fix, Copy-Änderung, Label umbenennen |
-| `micro` | 1–3 Dateien, bekanntes Muster, keine neuen Konzepte | Button-Styling, kleines UI-Detail, Farbe ändern |
-| `standard` | Neue Funktionalität, mehrere Dateien, klarer Scope | Neue Seite, neues Feature, neues Projekt |
-| `large` | Neue Systeme, Architektur-Änderungen, viele Abhängigkeiten | Komplexes Produkt, Auth-System, DB-Migration |
+- intended outcome and primary user;
+- existing evidence, assets, constraints, and non-goals;
+- important uncertainties and decisions;
+- success signal and a plausible measurement window;
+- whether GitHub is the desired work tracker and where the product should live.
 
-**Override:** Wenn die Anfrage `--scope nano|micro|standard|large` enthält, verwende diesen Wert direkt ohne Auto-Detection.
+Do not invent a target user, a business case, a stack, or a deployment platform.
 
-**Kommuniziere den Scope am Anfang:**
-> *"Scope erkannt: [stufe] — [welche Phasen werden übersprungen]"*
+## 2. Establish portable context
 
-**Phase-Skip-Regeln:**
-| Phase | nano | micro | standard | large |
-|---|---|---|---|---|
-| Phase 1: Setup | minimal | minimal | ja | ja |
-| Phase 2: Requirements | **überspringen** | minimal (1 Issue) | voll | voll |
-| Phase 3: Design | **überspringen** | **überspringen** | ja | ja |
-| Phase 4: Architektur | **überspringen** | **überspringen** | ja | ja (extended) |
-| Phase 5: Implementierung | ja | ja | ja | ja |
-| Phase 6: QA | **überspringen** | minimal (smoke test) | voll | extended |
-| Phase 7: Deployment | ja | ja | ja | ja |
+With approval, create the product-local context from `templates/product/`:
 
----
+- `AGENTS.md` as the shared working agreement;
+- `CLAUDE.md` as the thin Claude Code adapter to that agreement;
+- `PRODUCT.md` as durable product context;
+- `DESIGN.md` when the product has an experience surface;
+- `docs/decisions/` only for decisions that must outlive an issue or pull request.
 
-## Resume Detection — Nach Scope Detection ausführen
+Record the workflow kit's Git commit or release tag in `PRODUCT.md`. This pins the kickoff to the kit version actually used; it must not silently follow a newer remote revision.
 
-Prüfe, ob die Anfrage einen `--from` Parameter enthält:
+Use GitHub Issues and a project board for work status only when the user chooses GitHub. Requirements and acceptance criteria belong to the relevant issue, not a parallel phase handoff or `STATUS.md`.
 
-**Syntax:** `--from requirements|design|architecture|implementation|qa`
+## 3. Triage the work
 
-**Kombinierbar mit `--scope`:** `/kickoff --scope standard --from design "..."`
+State the risk assessment before choosing contributors or artifacts:
 
-**Wenn `--from` gesetzt:**
-1. Führe einen **Kontext-Check** durch — bevor du zur Zielphase springst:
-   - Lies offene GitHub Issues im Repo (falls bereits eines erstellt wurde)
-   - Prüfe vorhandene Branches (`git branch -a`)
-   - Prüfe ob `docs/`, ADR-Dateien oder `STATUS.md` existieren
-2. Kommuniziere den Resume-Punkt klar:
-   > *"Resume ab Phase [X]: [Phasenname] — überspringe [Liste der Phasen]"*
-3. **Warnung bei fehlendem Vorarbeitsoutput:** Wenn der erwartete Output vorheriger Phasen fehlt (z.B. kein Repo/Issues bei `--from design`), weise den User darauf hin und frage ob er trotzdem fortfahren möchte.
-4. Springe direkt zur Zielphase — überspringe alle davor liegenden Phasen.
+| Risk | Ask |
+| --- | --- |
+| Product | Is the outcome, user, or demand materially uncertain? |
+| Experience | Is a new journey, UI pattern, content model, or accessibility decision involved? |
+| Technical | Are data, privacy, security, reliability, integrations, or irreversible choices involved? |
+| Delivery | What is the blast radius, rollback path, and post-launch outcome check? |
 
-**Phasen-Referenz:**
-| Flag | Startet bei | Setzt voraus |
-|---|---|---|
-| `--from requirements` | Phase 2: Requirements | Repo vorhanden |
-| `--from design` | Phase 3: Design | GitHub Issues vorhanden |
-| `--from architecture` | Phase 4: Architektur | GitHub Issues + ggf. Mockups vorhanden |
-| `--from implementation` | Phase 5: Implementierung | Issues + Architecture-Entscheidung vorhanden |
-| `--from qa` | Phase 6: QA | Offener PR vorhanden |
+Select only the necessary activities. Examples:
 
-**Wenn kein `--from` gesetzt:** Normaler Workflow-Start (siehe Before You Start).
+- A focused prototype may need discovery and a lightweight design review, but no architecture record.
+- A new data boundary may need a technical decision, security review, and rollout plan even with little UI work.
+- A straightforward known-pattern build may move directly to an issue, implementation plan, and proportionate verification.
 
----
+Use specialized agents or skills only for bounded questions that benefit from parallel expertise. The main conversation owns prioritization and cross-cutting decisions.
 
-## Before You Start
+## 4. Create an executable first slice
 
-Ask the user these clarifying questions (grouped, not one by one) — **nur bei Scope standard oder large**:
+Propose the smallest testable slice with:
 
-- **Projektidee**: Was soll gebaut werden? (falls nicht schon bekannt)
-- **Zielgruppe**: Wer sind die Nutzer?
-- **Scope**: MVP oder Full Product?
-- **Plattform**: Web / Mobile / Desktop / Responsive Web App?
-- **Timeline**: Gibt es eine Zeitvorstellung?
-- **Tech-Präferenzen**: Next.js + Vercel als Default, oder etwas anderes?
-- **Was existiert bereits**: Notizen, Mockups, Referenzen?
+- a clearly bounded problem and non-goals;
+- issue-level acceptance criteria and dependencies;
+- the design, research, technical, and quality work selected by the triage;
+- a human decision gate for consequential choices;
+- verification evidence required before release;
+- a post-release outcome check when the slice ships.
 
-Bei Scope `nano` oder `micro`: Starte direkt ohne Rückfragen.
+Wait for explicit direction before crossing a human gate, creating external resources, spending paid credits, or releasing to users.
 
-Sobald der User geantwortet hat (oder bei nano/micro direkt), starte den Workflow.
+## Completion of kickoff
 
----
-
-## Phase 1: Setup
-
-- Erstelle ein GitHub Repo mit sinnvoller Struktur
-- Richte ein GitHub Projects Board ein (Backlog → Ready → In Progress → Review → Done)
-- Definiere Milestones: Discovery → Design → Architecture → Implementation → QA → Launch
-- Erstelle `docs/lessons.md` für phasenübergreifende Lernmuster (wird nach Phasenproblemen befüllt)
-
----
-
-## Phase 2: Requirements (`product-manager` + `ux-researcher`)
-
-- Erarbeite im Dialog mit dem User die Kernfeatures
-- Schreibe für jedes Feature ein GitHub Issue mit User Story, Akzeptanzkriterien und Priorität (Must/Should/Could)
-- Frag aktiv nach, wenn Infos fehlen
-
----
-
-## Phase 3: Design (`product-designer`)
-
-- Erstelle eine Screen-Inventur basierend auf den Issues
-- Generiere UI-Mockups mit Nano Banana (nano-banana skill)
-- Lade die Mockups als Bildanhänge direkt in die jeweiligen GitHub Issues hoch
-- Feedback und Design-Freigabe werden als Issue-Kommentare dokumentiert
-- **Warte auf User-Feedback bevor du weitermachst**
-
----
-
-## Phase 4: Architektur (`tech-lead`)
-
-- Schlage einen Tech Stack vor basierend auf Requirements und Scope
-- Erstelle ein Architecture Decision Record (ADR) im Repo
-- Kläre offene technische Fragen mit dem User
-- **Warte auf User-Bestätigung bevor du weitermachst**
-
----
-
-## Phase 5: Implementierung (`developer`)
-
-- Arbeite die Tickets mit Design ab, eins nach dem anderen
-- Issue auf "In Progress" im GitHub Projects Board setzen, bevor die Arbeit beginnt
-- Feature-Branch pro Issue: `feat/<issue-id>-<kurzbeschreibung>`
-- PR erstellen mit `Closes #<issue-id>` in der Beschreibung und Screenshots für UI-Änderungen
-- Issue auf "Review" setzen, wenn der PR geöffnet wird
-- Nutze die v0-generierten Komponenten aus Phase 3
-
----
-
-## Phase 6: QA (`qa-lead`)
-
-- Reviewe den PR gegen die Akzeptanzkriterien im verlinkten Issue
-- Feedback als PR-Kommentare, bei Problemen "Changes requested"
-- PR approven wenn alle Kriterien erfüllt sind
-- Nach dem Merge: Issue wird automatisch geschlossen und auf "Done" gesetzt
-- Prüfe Edge Cases, Responsive, Accessibility
-- Erstelle eine Release-Checkliste
-- **Warte auf User-OK bevor du weitergehst**
-
----
-
-## Phase 7: Deployment (`tech-lead`)
-
-- Konfiguriere Vercel (oder alternatives Target)
-- Deploye nach dem finalen OK des Users
-
----
-
-## Regeln
-
-- Frag an jedem Phasenübergang nach Feedback
-- Halte den Status im Repo aktuell (STATUS.md)
-- Wenn etwas unklar ist: frag nach — rate nicht
-- Zeig Zwischenergebnisse, damit der User früh korrigieren kann
-- Lies `docs/lessons.md` zu Beginn jeder Phase auf Muster, die relevant sein könnten
-- Wenn eine Phase Korrekturen brauchte oder etwas schiefgelaufen ist: halte die Lektion in `docs/lessons.md` fest — welches Muster war es und welche Regel hätte den Fehler verhindert?
-- Wenn etwas schiefläuft: STOPP und neu planen — nicht weiterpushen
+A kickoff is complete when the product context is credible, the first slice can be started without guessing, ownership and decision gates are clear, and the next work item is ready. It is not complete merely because a repository or backlog exists.

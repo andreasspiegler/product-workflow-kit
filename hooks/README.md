@@ -1,3 +1,9 @@
+# Hooks (V1 / legacy)
+
+The included session-start hook depends on V1 files such as `STATUS.md` and is not part of the V2 workflow. Do not install it for a new V2 product. Runtime-specific hooks are opt-in, project-local adapters; see [`docs/runtime-adapters.md`](../docs/runtime-adapters.md).
+
+---
+
 # Hooks
 
 Automatisierte Event-Handler für Claude Code Sessions. Hooks injizieren Kontext oder validieren Zustände bei bestimmten Events.

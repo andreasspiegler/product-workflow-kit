@@ -141,7 +141,11 @@ cp "$KIT_ROOT/templates/product/DESIGN.md" "$TARGET/DESIGN.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/README.md" "$TARGET/docs/decisions/README.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/TEMPLATE.md" "$TARGET/docs/decisions/TEMPLATE.md"
 
-escaped_version="$(printf '%s' "$KIT_VERSION" | sed 's/[&|]/\\&/g')"
+case "$KIT_VERSION" in
+  *$'\n'*|*$'\r'*) fail "kit version must not contain line breaks" ;;
+esac
+yaml_version="$(printf '%s' "$KIT_VERSION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+escaped_version="$(printf '%s' "$yaml_version" | sed 's/[\\&|]/\\&/g')"
 escaped_date="$(date +%F | sed 's/[&|]/\\&/g')"
 product_tmp="$(mktemp "$TARGET/.product-workflow-kit.XXXXXX")"
 trap 'rm -f "$product_tmp"' EXIT

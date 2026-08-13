@@ -1,34 +1,32 @@
-# SoT-Builder
+---
+name: sot-builder
+description: >-
+  Create or maintain a durable product decision or contract when it must outlive
+  the current issue or pull request. This is the V2 compatibility name for the
+  decision-record workflow; do not use it for status updates or routine notes.
+---
 
-Erstelle und verwalte Source-of-Truth-Einträge im `docs/sot/`-Verzeichnis.
+# Durable decision record
 
-## Wann nutzen
+The historical V1 name “SoT builder” remains for compatibility. In V2, use `docs/decisions/` rather than a broad `docs/sot/` registry.
 
-- Wenn eine Business Rule, User Journey, API Contract oder Architektur-Entscheidung formalisiert werden soll
-- Während Phase 2 (Requirements): BR-xxx und UJ-xxx Einträge erstellen
-- Während Phase 4 (Architektur): ADR-xxx und API-xxx Einträge erstellen
-- Wenn bestehende Entscheidungen aktualisiert oder als deprecated markiert werden sollen
+## When to create a record
 
-## ID-Prefixe
+Create one only if the choice needs to remain discoverable beyond the active issue or pull request, for example:
 
-| Prefix | Typ | Wann erstellen |
-|--------|-----|----------------|
-| `BR-xxx` | Business Rule | Phase 2 — harte Constraints, Geschäftsregeln |
-| `UJ-xxx` | User Journey | Phase 2 — kritische Nutzerpfade |
-| `API-xxx` | API/Data Contract | Phase 4 — Schnittstellenbeschreibungen |
-| `ADR-xxx` | Architecture Decision Record | Phase 4 — technische Entscheidungen |
+- a product rule with material impact;
+- an architecture, data, privacy, security, or deployment boundary;
+- an API or integration contract;
+- a decision with a review or rollback trigger.
 
-## Vorgehen
+Do not create a record for routine status, temporary handoffs, small implementation notes, or a decision already fully explained in a short pull request.
 
-1. **Nächste freie ID ermitteln**: Prüfe `docs/sot/` auf bestehende Einträge des gewählten Typs. Die nächste Nummer ist `max + 1`, beginnend bei 001.
-2. **Template ausfüllen**: Kopiere `docs/sot/TEMPLATE.md` und fülle alle Felder aus.
-3. **Datei erstellen**: Speichere als `docs/sot/[ID].md` (z.B. `docs/sot/BR-001.md`).
-4. **STATUS.md aktualisieren**: Trage die neue ID in das SoT-Register in STATUS.md ein.
+## Process
 
-## Regeln
+1. Read the existing issue, pull request, `PRODUCT.md`, and related decisions.
+2. Check whether a relevant record already exists; update or supersede it rather than duplicate it.
+3. Copy `templates/product/docs/decisions/TEMPLATE.md` into the target product's `docs/decisions/` directory.
+4. State the decision, evidence, alternatives, consequences, ownership, and the review or rollback trigger.
+5. Link the decision to its issue or pull request and mark its status accurately.
 
-- Jeder Eintrag hat genau eine eindeutige ID
-- IDs werden nie wiederverwendet — deprecated Einträge bleiben bestehen
-- Bei Ablösung: alten Eintrag auf `superseded by [neue ID]` setzen
-- Halte Einträge kompakt (max. 500 Tokens pro Eintrag)
-- Referenziere SoT-IDs in Handoff-Docs, Issues und Code-Kommentaren
+Never invent evidence, approval, owners, or contracts. Ask for explicit approval when recording a consequential decision that has not already been made.

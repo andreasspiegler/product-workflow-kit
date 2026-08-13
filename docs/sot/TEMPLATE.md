@@ -1,3 +1,9 @@
+# Legacy V1 SoT template
+
+V2 uses `templates/product/docs/decisions/TEMPLATE.md` for durable decisions and contracts. Keep this file only for existing V1 projects until they migrate.
+
+---
+
 # [ID-PREFIX]-[NNN]: [Titel]
 
 **Status:** active | deprecated | superseded by [ID]

@@ -1,306 +1,140 @@
-# Claude Code Product Workflow
+# Product Workflow Kit
 
-**[github.com/andreasspiegler/claude-code-product-workflow](https://github.com/andreasspiegler/claude-code-product-workflow)**
+A portable, risk-based workflow kit for building digital products with Claude Code, Codex, or OpenCode.
 
-A multi-agent setup for Claude Code that turns a product idea into a deployed application — step by step, with human feedback at every phase transition.
+V2 replaces a rigid multi-agent pipeline with one shared product context and selective specialist work. It keeps human decisions deliberate, uses GitHub for work status when GitHub is chosen, and treats launch as the start of outcome learning—not the end of the work.
 
-## What This Is
+> V2 is currently introduced on `feat/v2-portable-workflow-kit`. The legacy V1 commands and hook remain in the repository only to avoid breaking existing installs; new setups should use the V2 skills and templates.
 
-A set of **10 specialized Claude Code sub-agents**, a **kickoff command** for new projects, and a **feature command** for extending existing ones — orchestrating a complete product development workflow with human feedback at every phase transition.
+## The model
 
-```
-/kickoff An app that helps freelancers track project time and generate invoices
-/feature Add a dark mode toggle to the existing app
-
-# Scope override — skip irrelevant phases automatically
-/feature --scope nano Fix the typo in the header
-/kickoff --scope large Build a multi-tenant SaaS platform
-
-# Resume — jump directly to a specific phase
-/feature --from implementation Add dark mode toggle
-/kickoff --from design My app idea
-```
-
-## The Workflow
-
-### New Project (`/kickoff`)
-
-```
-You: "I want to build an app for X"
-  │
-  ▼
-product-manager ──── GitHub Repo + GitHub Projects Board + Milestones
-  │
-  ▼
-product-manager + ux-researcher ──── Discovery, Requirements → GitHub Issues
-  │
-  ▼ (your feedback)
-  │
-product-designer ──── UI Mockups via Nano Banana Pro → uploaded to Issues
-  │
-  ▼ (your feedback)
-  │
-tech-lead ──── Architecture, Stack Decision, ADR
-  │
-  ▼ (your confirmation)
-  │
-developer ──── Feature Branch per Issue → PR → Review → merge to main
-  │
-  ▼
-qa-lead ──── Code review, test coverage, edge cases, release gates
-  │
-  ▼ (your final OK)
-  │
-tech-lead ──── Deploy via Vercel (triggered by merge to main)
+```text
+Workflow Kit (versioned Git repository)
+        │ explicit local update
+        ▼
+Product-local context (pinned kit commit)
+  ├── AGENTS.md       shared working agreement
+  ├── PRODUCT.md      outcome, scope, constraints, success signal
+  ├── DESIGN.md       reusable experience and design direction
+  └── docs/decisions/ durable decisions and contracts
+        │
+        ▼
+Runtime adapters
+  Claude Code · Codex · OpenCode
 ```
 
-### Existing Project (`/feature`)
+The Git repository is the source of the kit. Each product uses a reviewed local copy or symlink and records the exact kit Git commit or release tag in `PRODUCT.md`. A kickoff never silently downloads a newer remote revision.
 
-```
-You: "I want to add X to the existing app"
-  │
-  ▼
-product-manager ──── Read codebase, check lessons.md, review open issues
-  │
-  ▼
-product-manager + ux-researcher ──── Requirements → new GitHub Issues
-  │
-  ▼ (your feedback)
-  │
-product-designer ──── Mockups consistent with existing design (if UI changes)
-  │
-  ▼ (your feedback, if design phase ran)
-  │
-tech-lead ──── Impact on existing architecture, ADR addendum (if needed)
-  │
-  ▼ (your confirmation, if arch phase ran)
-  │
-developer ──── Read existing patterns first → Feature Branch → PR
-  │
-  ▼
-qa-lead ──── Acceptance criteria + regression testing
-  │
-  ▼ (your final OK)
-  │
-tech-lead ──── Deploy via existing Vercel config
-```
+## What V2 changes
 
-**You stay in control.** Every phase transition waits for your feedback before proceeding.
+| V1 | V2 |
+| --- | --- |
+| Fixed seven-phase pipeline | Risk triage selects only discovery, design, technical, quality, and release work that is useful. |
+| Handoff documents and `STATUS.md` | GitHub tracks work state; the repository contains only durable product, design, and decision context. |
+| Nano Banana → v0 as the design path | Impeccable, image generation, and v0 are optional tools selected for a concrete purpose. |
+| One Claude Code setup | Portable core plus thin, project-local adapters for Claude Code, Codex, and OpenCode. |
+| Deployment as the finish line | Relevant releases include a post-launch signal and a decision to iterate, scale, stop, or investigate. |
 
-## Scope Detection
+## Core skills
 
-Before starting any workflow, the `product-manager` classifies the request and skips phases that don't add value:
+| Skill | Use it for |
+| --- | --- |
+| [`kickoff`](skills/kickoff/SKILL.md) | Starting a new product and creating credible, pinned product context. |
+| [`feature`](skills/feature/SKILL.md) | Extending an existing product from its current context and risk profile. |
+| [`product-design`](skills/product-design/SKILL.md) | User journeys, interaction direction, system decisions, UX/a11y review, and optional Impeccable usage. |
+| [`quality-release`](skills/quality-release/SKILL.md) | Proportionate tests, release readiness, rollout risk, and outcome checks. |
+| [`sot-builder`](skills/sot-builder/SKILL.md) | V2 compatibility name for durable decision and contract records. |
+| [`nano-banana`](skills/nano-banana/SKILL.md) | Optional, authorized visual exploration only. |
 
-| Scope | Criteria | Examples | Skips |
-|---|---|---|---|
-| `nano` | Single words/sentences, no logic change | Typo fix, copy edit | Requirements, Design, Architecture, QA |
-| `micro` | 1–3 files, known pattern, no new concepts | Button styling, small UI detail | Architecture, full Discovery |
-| `standard` | New functionality, multiple files | New page, new feature | — (full workflow) |
-| `large` | New systems, architectural changes | New product, DB migration | — (full workflow + extended QA) |
+The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions.
 
-The scope is auto-detected from the request and communicated upfront. Override anytime with `--scope nano|micro|standard|large`.
+## Start a product with a pinned kit version
 
-## Resumable Workflows
-
-Jump directly to any phase without restarting from the beginning. Useful when a phase needs to be redone or a workflow was interrupted:
-
-```
-/feature --from design "Add dark mode toggle"   # re-run design phase
-/kickoff --from qa "My app"                     # jump straight to QA
-```
-
-The `product-manager` runs a context check before jumping in — reading existing issues, branches, and docs to reconstruct the state. If expected prior outputs are missing, you'll get a warning before proceeding.
-
-**Combinable with `--scope`:**
-```
-/feature --scope micro --from implementation "Fix button color"
-```
-
-## Agents
-
-| Agent | Role | Key Capabilities |
-|---|---|---|
-| `product-manager` | Orchestrator & PM | Project setup, requirements, prioritization, agent coordination |
-| `ux-researcher` | Discovery | Interview guides, personas, JTBD, validation |
-| `product-designer` | UX/UI Design | Nano Banana Pro mockups, v0 design-to-code, design systems |
-| `tech-lead` | Architecture & Deployment | System design, ADRs, Vercel deployment, CI/CD |
-| `developer` | Implementation | Feature development, PRs, tests, code quality |
-| `qa-lead` | Quality Assurance | Test plans, acceptance criteria, release readiness |
-| `product-analyst` | Metrics & Data | KPI trees, A/B tests, tracking plans, dashboards |
-| `business-strategist` | Viability | Market sizing, pricing, unit economics, business cases |
-| `product-marketing` | Positioning & Launch | Messaging frameworks, GTM plans, lifecycle comms |
-| `customer-success` | Adoption & Retention | Onboarding flows, churn analysis, voice of customer |
-
-The core workflow uses 6 agents (product-manager, ux-researcher, product-designer, tech-lead, developer, qa-lead). The remaining 4 are available for deeper analysis when needed.
-
-## GitHub Workflow
-
-All project work lives in GitHub — the single source of truth for code, design, status, and decisions.
-
-### GitHub Projects
-
-Every project gets a **GitHub Projects board** with five columns:
-
-```
-Backlog → Ready → In Progress → Review → Done
-```
-
-Issues move through these columns as work progresses. The board is the primary status view — no separate tool needed. Milestones map to workflow phases (Discovery, Design, Architecture, Implementation, QA, Launch).
-
-### Designs Attached to Issues
-
-All mockups and design assets are **uploaded directly to the corresponding GitHub Issue**. Requirements, designs, and decisions stay in one place.
-
-- Nano Banana Pro mockups → attached as image files to the issue
-- Feedback and approvals → documented as issue comments
-- Design sign-off → confirmed with a comment or label before implementation begins
-
-### Feature Branches and Pull Requests
-
-All implementation work follows a **feature branch → PR → merge** workflow:
-
-- **Branch naming**: `feat/<issue-id>-<short-description>` (e.g. `feat/12-user-auth`)
-- One branch per issue / ticket
-- PRs reference the issue (`Closes #12`) and include screenshots for UI changes
-- Vercel automatically creates a **preview deployment** for every open PR
-- Merging to `main` triggers the production deployment
-
-## Design Toolchain
-
-The `product-designer` agent integrates two AI tools for rapid design iteration:
-
-**Nano Banana Pro** (Google's Gemini 3 Pro Image model) generates UI mockups from text descriptions — with high text fidelity and layout understanding. The agent uses structured prompts covering screen type, key elements, visual style, and platform.
-
-**v0** (by Vercel) converts approved mockups into production-ready React components using shadcn/ui and Tailwind CSS.
-
-This means: text description → visual mockup → production component — without Figma in the loop.
-
-## Setup
-
-### 1. Copy agents to your Claude Code config
+From the product repository, copy the shared context and record the kit revision that supplied it:
 
 ```bash
-cp agents/*.md ~/.claude/agents/
+# WORKFLOW_KIT points to your reviewed local checkout of this repository
+cp -R "$WORKFLOW_KIT/templates/product/." .
+git -C "$WORKFLOW_KIT" rev-parse HEAD
+# Replace {{WORKFLOW_KIT_VERSION}} and {{DATE}} in PRODUCT.md with that value and today's date.
 ```
 
-### 2. Copy the commands
+Then fill the outcome, user, scope, non-goals, constraints, and success signal in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
+
+The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
+
+## Add the portable skills locally
+
+Install only the skills a product needs. The following examples use project-local copies so the product stays reproducible; symlinks are appropriate only when the project intentionally follows changes in a local kit checkout.
+
+### Claude Code
 
 ```bash
-mkdir -p ~/.claude/commands
-cp commands/kickoff.md ~/.claude/commands/
-cp commands/feature.md ~/.claude/commands/
+mkdir -p .claude/skills
+cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
+  "$WORKFLOW_KIT/skills/product-design" "$WORKFLOW_KIT/skills/quality-release" \
+  .claude/skills/
 ```
 
-### 3. Install the Nano Banana skill (for UI mockup generation)
+Use the role briefs only when the team wants Claude Code subagents, by adapting selected files from `agents/` into `.claude/agents/`. Project hooks and permissions remain explicit, project-local choices.
 
-The `product-designer` agent uses this skill to generate UI mockups via the Gemini API.
+### Codex
 
 ```bash
-# Install Gemini CLI
-npm install -g @google/gemini-cli
-
-# Create your .env file with your Gemini API key (get one at https://aistudio.google.com/)
-cp skills/nano-banana/.env.example skills/nano-banana/.env
-# Then edit skills/nano-banana/.env and add your key
-
-# Install the nanobanana extension
-gemini extensions install https://github.com/gemini-cli-extensions/nanobanana
-
-# Copy the skill to Claude Code
-mkdir -p ~/.claude/skills/nano-banana
-cp skills/nano-banana/SKILL.md ~/.claude/skills/nano-banana/
+mkdir -p .agents/skills
+cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
+  "$WORKFLOW_KIT/skills/product-design" "$WORKFLOW_KIT/skills/quality-release" \
+  .agents/skills/
 ```
 
-See [`skills/nano-banana/README.md`](skills/nano-banana/README.md) for full details.
+Keep `AGENTS.md` in the product root. Configure only the Codex-specific agent, permission, or connector capabilities actually needed by the product.
 
-### 4. Install the skills (optional)
-
-Skills auto-trigger when you describe what you want in natural language — no explicit command needed.
-
-**Claude Code:**
+### OpenCode
 
 ```bash
-mkdir -p ~/.claude/skills/kickoff
-cp skills/kickoff/SKILL.md ~/.claude/skills/kickoff/
-
-mkdir -p ~/.claude/skills/feature
-cp skills/feature/SKILL.md ~/.claude/skills/feature/
+mkdir -p .opencode/skills
+cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
+  "$WORKFLOW_KIT/skills/product-design" "$WORKFLOW_KIT/skills/quality-release" \
+  .opencode/skills/
 ```
 
-**Claude Cowork:**
+OpenCode can also discover project skills in `.agents/skills/`; use one local convention per product. Put OpenCode-specific agents, providers, and permissions in `.opencode/` only when required.
 
-Pre-packaged ZIPs are available in [`dist/`](dist/). Upload them via Settings → Skills in Claude Cowork:
+See [runtime adapters](docs/runtime-adapters.md) for the portability boundary and update policy.
 
-- [`dist/kickoff.zip`](dist/kickoff.zip) — new project workflow
-- [`dist/feature.zip`](dist/feature.zip) — feature development on existing projects
-- [`dist/nano-banana.zip`](dist/nano-banana.zip) — AI image generation via Gemini CLI
+## Product operating model
 
-### 5. Start a project
+1. Read the product context, existing code, and the active GitHub issue or pull request.
+2. Triage product, experience, technical, and delivery risk.
+3. Select the smallest activities that remove meaningful uncertainty.
+4. Keep acceptance criteria and work status in the chosen tracker; keep durable context in the repository.
+5. Verify proportionately. Before an external release, ask for explicit approval.
+6. For meaningful launches, check the intended outcome and decide what to do next.
 
-**New project from scratch:**
+## Impeccable
 
+[Impeccable](https://impeccable.style/) is a useful optional addition to the design step. When it is installed for the target runtime, the V2 design skill uses `shape`, `document`, `polish`, and `audit` as situational help—not as an automatic dependency. Its hooks and provider configuration must remain project-local and opt-in.
+
+## Migrating a V1 project
+
+Read [V1 to V2 migration](docs/v2-migration.md). In short: add the product templates, move only still-relevant durable rules to `docs/decisions/`, stop using phase handoffs and `STATUS.md`, and do not install the legacy session-start hook.
+
+## Repository layout
+
+```text
+agents/                 optional specialist role briefs
+commands/               V1 compatibility only; not for new V2 setups
+docs/                   adapter guide and migration notes
+skills/                 canonical V2 workflow skills
+templates/product/      product-local shared context
+hooks/                  V1 hook retained for existing projects only
 ```
-/kickoff [Your project idea in 1-3 sentences]
-```
 
-**Add a feature to an existing project:**
+## Principles
 
-```
-/feature [What you want to add or improve]
-```
-
-Both commands auto-detect the scope of your request and skip phases that don't add value. With the skills installed, you can also describe what you want in natural language and Claude will pick up the right workflow automatically.
-
-**Optional flags:**
-
-```
---scope nano|micro|standard|large   Override auto-detected scope
---from  requirements|design|architecture|implementation|qa   Resume at a specific phase
-```
-
-## Requirements
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with sub-agent support
-- GitHub account (for repo, issues, and project board)
-- Optional: [Vercel](https://vercel.com) account for deployment
-- Optional: Access to [Nano Banana Pro](https://aistudio.google.com) for UI mockups
-- Optional: Access to [v0.dev](https://v0.dev) for design-to-code
-
-## Recommended Companion Tools
-
-While the agents run inside Claude Code, the workflow benefits from external tools:
-
-| Tool | Purpose | Phase |
-|---|---|---|
-| [Cursor Cloud Agents](https://cursor.com) | Autonomous coding in isolated VMs | Implementation |
-| [v0.dev](https://v0.dev) | Design-to-code React components | Design → Code |
-| [Nano Banana Pro](https://aistudio.google.com) | AI-generated UI mockups | Design |
-| [Vercel](https://vercel.com) | Preview + production deployment | Deployment |
-
-## Customization
-
-Each agent is a Markdown file with a YAML frontmatter header. You can:
-
-- **Adjust the description** (controls when Claude Code auto-invokes the agent)
-- **Modify behavior rules** (add project-specific constraints)
-- **Extend checklists** (add your own quality gates)
-- **Change the tech stack defaults** (the developer agent assumes Next.js + TypeScript by default)
-
-The kickoff command uses `$ARGUMENTS` as a placeholder — everything you type after `/kickoff` becomes the project description.
-
-## Philosophy
-
-A few design decisions behind this setup:
-
-- **Human at every gate.** Agents don't auto-proceed between phases. You review and approve.
-- **3-4 agents per phase, not 10.** More agents = more coordination overhead. Each phase activates only the agents it needs.
-- **GitHub as single source of truth.** Issues, designs, code, and status live in one place — tracked via GitHub Projects. No separate project management tool needed.
-- **"Ask, don't guess."** Every agent is instructed to ask when something is unclear rather than making assumptions.
-
-## License
-
-MIT
-
-## Author
-
-[Andreas Spiegler](https://github.com/andreasspiegler) — Freelance Product Manager, Service Designer & Systemic Coach based in Hamburg.
+- Product outcome before process compliance.
+- One portable core; runtime-specific behavior stays in thin adapters.
+- GitHub tracks work state when selected; product files capture only durable context.
+- Tools create evidence, never replace user decisions.
+- Risk determines depth of work and verification.
+- Deployment needs explicit authorization; a product learns after it ships.

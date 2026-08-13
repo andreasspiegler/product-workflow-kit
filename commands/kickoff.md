@@ -1,3 +1,5 @@
+> **Legacy V1 command:** This file preserves the former fixed-phase workflow for existing installs. New V2 setups use `skills/kickoff/SKILL.md`; see `docs/v2-migration.md`.
+
 Ich starte ein **neues Projekt von Grund auf**. Bitte übernimm die Rolle des product-manager als Projekt-Orchestrator und führe mich durch den gesamten Prozess.
 
 > Wenn du ein bestehendes Projekt weiterentwickeln möchtest, nutze stattdessen `/feature`.

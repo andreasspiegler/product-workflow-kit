@@ -13,7 +13,7 @@ Start from the product and its current codebase, not a generic seven-phase workf
 
 ## 1. Reconstruct context
 
-Read, as relevant:
+Start with targeted local search (for example `rg`) to identify the affected files, symbols, tests, and existing conventions. Open only the smallest relevant context before expanding the search. Then read, as relevant:
 
 1. `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md`.
 2. The linked GitHub issue or pull request, including acceptance criteria and prior decisions.

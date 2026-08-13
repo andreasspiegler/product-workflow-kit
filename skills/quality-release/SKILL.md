@@ -34,6 +34,21 @@ For each meaningful change, make the following visible in the issue or pull requ
 
 Use automated tests where they protect repeatable behavior. Add focused manual checks for visual, interaction, accessibility, and environment-specific behavior that tests do not cover.
 
+## Use test-first selectively
+
+Choose a test-first loop when the expected behavior is stable enough to describe before implementation and an executable test would reduce meaningful risk. It is especially useful for business rules, data transformations, authorization, API contracts, bug regressions, state transitions, and other deterministic behavior.
+
+Do not require it for exploratory work, visual or copy changes, a still-unclear product decision, or behavior that can only be assessed credibly in the real interface or environment.
+
+When test-first is appropriate:
+
+1. Make the relevant acceptance criterion observable and agree on the intended behavior.
+2. Let the developer, QA lead, or tech lead create a focused failing test that demonstrates the intended behavior and fails for the expected reason.
+3. Implement the smallest change that makes the test pass, then refactor without changing the agreed behavior.
+4. Run the proportionate regression and manual checks that the test cannot replace.
+
+Treat a passing test as evidence, not as proof that the whole product change is ready. Keep the acceptance criteria, test evidence, and remaining limits visible in the issue or pull request.
+
 ## Release and outcome
 
 Do not treat a merge or deployment as completion. Before release, confirm the target environment, rollback path, monitoring or logs, and required approval. Do not deploy or change production systems without explicit authorization.

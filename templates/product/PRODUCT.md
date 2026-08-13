@@ -1,6 +1,6 @@
 ---
 workflow_kit:
-  source: andreasspiegler/claude-code-product-workflow
+  source: andreasspiegler/product-workflow-kit
   version: "{{WORKFLOW_KIT_VERSION}}"
   installed_at: "{{DATE}}"
 ---

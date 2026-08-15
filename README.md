@@ -2,7 +2,7 @@
 
 A portable, risk-based workflow kit for building digital products with Claude Code, Codex, or OpenCode.
 
-V2 replaces a rigid multi-agent pipeline with one shared product context and selective specialist work. It keeps human decisions deliberate, uses GitHub for work status when GitHub is chosen, and treats launch as the start of outcome learning—not the end of the work.
+V2 replaces a rigid multi-agent pipeline with one shared product context and selective specialist work. It keeps human decisions deliberate, uses GitHub Issues as the default work record when GitHub is chosen, and treats launch as the start of outcome learning—not the end of the work.
 
 > V2 is currently introduced on `feat/v2-portable-workflow-kit`. The legacy V1 commands and hook remain in the repository only to avoid breaking existing installs; new setups should use the V2 skills and templates.
 
@@ -30,7 +30,7 @@ The Git repository is the source of the kit. Each product uses a reviewed local 
 | V1 | V2 |
 | --- | --- |
 | Fixed seven-phase pipeline | Risk triage selects only discovery, design, technical, quality, and release work that is useful. |
-| Handoff documents and `STATUS.md` | GitHub tracks work state; the repository contains only durable product, design, and decision context. |
+| Handoff documents and `STATUS.md` | GitHub Issues track work state; a Project is optional when a board or roadmap adds coordination value. The repository contains only durable product, design, and decision context. |
 | Nano Banana → v0 as the design path | Impeccable, image generation, and v0 are optional tools selected for a concrete purpose. |
 | One Claude Code setup | Portable core plus thin, project-local adapters for Claude Code, Codex, and OpenCode. |
 | Deployment as the finish line | Relevant releases include a post-launch signal and a decision to iterate, scale, stop, or investigate. |
@@ -144,7 +144,7 @@ hooks/                  V1 hook retained for existing projects only
 
 - Product outcome before process compliance.
 - One portable core; runtime-specific behavior stays in thin adapters.
-- GitHub tracks work state when selected; product files capture only durable context.
+- GitHub Issues track work state when selected; add a Project only for a requested board or a real coordination need. Product files capture only durable context.
 - Tools create evidence, never replace user decisions.
 - Risk determines depth of work and verification.
 - Deployment needs explicit authorization; a product learns after it ships.

@@ -8,7 +8,7 @@ The V1 `--scope nano|micro|standard|large` and `--from <phase>` flags are not su
 
 1. Add the files from `templates/product/` to the target product and fill in `PRODUCT.md`.
 2. Link or copy the selected V2 skills into the runtime's project-local skill directory.
-3. Keep GitHub Issues and the project board for status; do not create `STATUS.md` or phase handoff files.
+3. Keep GitHub Issues as the primary work record. Retain or add a GitHub Project only when a board or roadmap has a concrete coordination benefit; do not create `STATUS.md` or phase handoff files.
 4. Move only still-relevant durable rules from `docs/sot/` into `docs/decisions/`; leave historical files in place with a deprecation note.
 5. Replace a mandatory Nano Banana/v0 chain with an explicit design choice. Impeccable, image generation, and v0 are optional tools, not workflow phases.
 6. Do not install the V1 session-start hook. It depends on `STATUS.md` and is intentionally not part of V2.

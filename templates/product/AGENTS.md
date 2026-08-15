@@ -15,7 +15,7 @@ Read the existing code and conventions before proposing an implementation.
 
 ## Source of truth
 
-- GitHub Issues and the project board track work status, priorities, and acceptance criteria.
+- GitHub Issues track work status, priorities, and acceptance criteria when GitHub is the chosen tracker. Add a GitHub Project only when the user explicitly wants a board or roadmap, or when coordination needs justify it.
 - `PRODUCT.md` captures durable product context.
 - `DESIGN.md` captures the current design direction and system decisions.
 - `docs/decisions/` records durable, consequential decisions and contracts.

@@ -4,7 +4,7 @@ A portable, risk-based workflow kit for building digital products with Claude Co
 
 V2 replaces a rigid multi-agent pipeline with one shared product context and selective specialist work. It keeps human decisions deliberate, uses GitHub Issues as the default work record when GitHub is chosen, and treats launch as the start of outcome learning—not the end of the work.
 
-> V2 is currently introduced on `feat/v2-portable-workflow-kit`. The legacy V1 commands and hook remain in the repository only to avoid breaking existing installs; new setups should use the V2 skills and templates.
+> V2 is the current state of `main`. The legacy V1 commands and hook remain in the repository only to avoid breaking existing installs; new setups should use the V2 skills and templates.
 
 ## The model
 

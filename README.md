@@ -57,7 +57,7 @@ From the workflow kit checkout, install the shared context and selected skills i
 ./scripts/install.sh --target ../my-product --runtime claude
 ```
 
-The installer copies the product context, records the current kit Git commit and date in `PRODUCT.md`, and installs the five core skills locally. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
+The installer copies the product context, records the current kit version (nearest Git tag, or commit if untagged) and date in `PRODUCT.md`, and installs the five core skills locally. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
 
 Choose a different or additional runtime deliberately:
 
@@ -69,6 +69,10 @@ Choose a different or additional runtime deliberately:
 Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, and success signal in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
 
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
+
+### Versioning
+
+Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking change to a skill's contract or a template's structure, MINOR for a new skill or capability, PATCH for fixes and docs. `scripts/install.sh` pins to the nearest tag automatically; run `git tag -l` in the kit checkout to see available versions.
 
 ## Manual installation
 

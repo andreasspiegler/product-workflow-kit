@@ -19,8 +19,8 @@ Options:
   --skill <name>             Install one selected skill; repeat to choose several.
                               Defaults to kickoff, feature, requirements-quality,
                               product-design, and quality-release.
-  --kit-version <version>    Record an explicit kit version instead of the current
-                              Git commit.
+  --kit-version <version>    Record an explicit kit version instead of the
+                              auto-detected Git tag (or commit, if untagged).
   --help                     Show this help.
 
 Examples:
@@ -110,7 +110,7 @@ for skill in "${SKILLS[@]}"; do
 done
 
 if [[ -z "$KIT_VERSION" ]]; then
-  KIT_VERSION="$(git -C "$KIT_ROOT" rev-parse HEAD 2>/dev/null || true)"
+  KIT_VERSION="$(git -C "$KIT_ROOT" describe --tags --always 2>/dev/null || true)"
 fi
 [[ -n "$KIT_VERSION" ]] || fail "could not determine kit version; pass --kit-version explicitly"
 

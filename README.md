@@ -47,7 +47,7 @@ The Git repository is the source of the kit. Each product uses a reviewed local 
 | [`sot-builder`](skills/sot-builder/SKILL.md) | V2 compatibility name for durable decision and contract records. |
 | [`nano-banana`](skills/nano-banana/SKILL.md) | Optional, authorized visual exploration only. |
 
-The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions.
+The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions. See [`agents/README.md`](agents/README.md) for which specialist fits which question, and install one with `--agent <name>` below.
 
 ## Start a product with a pinned kit version
 

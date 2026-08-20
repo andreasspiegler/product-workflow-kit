@@ -9,7 +9,7 @@ description: >-
 
 # Product design
 
-Use this skill to reduce a real experience risk, not to create design artifacts by default.
+Use this skill to reduce a real experience risk, not to create design artifacts by default. For a bounded question that benefits from a dedicated specialist, delegate to `product-designer` or, for user evidence, `ux-researcher` — see [`agents/README.md`](../../agents/README.md).
 
 ## Start with context
 

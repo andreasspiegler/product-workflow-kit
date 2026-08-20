@@ -19,6 +19,10 @@ Options:
   --skill <name>             Install one selected skill; repeat to choose several.
                               Defaults to kickoff, feature, requirements-quality,
                               product-design, and quality-release.
+  --agent <name>             Install one optional specialist agent brief from
+                              agents/; repeat to choose several. None installed
+                              by default. Claude Code and OpenCode only — Codex
+                              has no native subagent directory.
   --kit-version <version>    Record an explicit kit version instead of the
                               auto-detected Git tag (or commit, if untagged).
   --help                     Show this help.
@@ -27,6 +31,7 @@ Examples:
   scripts/install.sh --target ../my-product --runtime claude
   scripts/install.sh --target ../my-product --runtime codex --runtime opencode
   scripts/install.sh --target ../my-product --runtime claude --skill kickoff --skill feature
+  scripts/install.sh --target ../my-product --runtime claude --agent tech-lead --agent product-designer
 EOF
 }
 
@@ -50,6 +55,7 @@ TARGET=""
 KIT_VERSION=""
 RUNTIMES=()
 REQUESTED_SKILLS=()
+REQUESTED_AGENTS=()
 DEFAULT_SKILLS=(kickoff feature requirements-quality product-design quality-release)
 
 while [[ $# -gt 0 ]]; do
@@ -75,6 +81,13 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || fail "--skill requires a skill name"
       if [[ ${#REQUESTED_SKILLS[@]} -eq 0 ]] || ! has_value "$2" "${REQUESTED_SKILLS[@]}"; then
         REQUESTED_SKILLS+=("$2")
+      fi
+      shift 2
+      ;;
+    --agent)
+      [[ $# -ge 2 ]] || fail "--agent requires an agent name"
+      if [[ ${#REQUESTED_AGENTS[@]} -eq 0 ]] || ! has_value "$2" "${REQUESTED_AGENTS[@]}"; then
+        REQUESTED_AGENTS+=("$2")
       fi
       shift 2
       ;;
@@ -109,6 +122,32 @@ for skill in "${SKILLS[@]}"; do
   [[ -f "$KIT_ROOT/skills/$skill/SKILL.md" ]] || fail "unknown skill: $skill"
 done
 
+AGENTS=()
+if [[ ${#REQUESTED_AGENTS[@]} -gt 0 ]]; then
+  AGENTS=("${REQUESTED_AGENTS[@]}")
+fi
+if [[ ${#AGENTS[@]} -gt 0 ]]; then
+  for agent in "${AGENTS[@]}"; do
+    [[ -f "$KIT_ROOT/agents/$agent.md" ]] || fail "unknown agent: $agent"
+  done
+fi
+
+runtime_agent_dir() {
+  case "$1" in
+    claude) printf '.claude/agents' ;;
+    opencode) printf '.opencode/agents' ;;
+    codex) printf '' ;;
+  esac
+}
+
+if [[ ${#AGENTS[@]} -gt 0 ]]; then
+  AGENT_CAPABLE_RUNTIMES=()
+  for runtime in "${RUNTIMES[@]}"; do
+    [[ -z "$(runtime_agent_dir "$runtime")" ]] || AGENT_CAPABLE_RUNTIMES+=("$runtime")
+  done
+  [[ ${#AGENT_CAPABLE_RUNTIMES[@]} -gt 0 ]] || fail "none of the selected runtimes support subagents (codex has no native subagent directory); drop --agent or add --runtime claude/opencode"
+fi
+
 if [[ -z "$KIT_VERSION" ]]; then
   KIT_VERSION="$(git -C "$KIT_ROOT" describe --tags --always 2>/dev/null || true)"
 fi
@@ -133,6 +172,16 @@ for runtime in "${RUNTIMES[@]}"; do
     [[ ! -e "$TARGET/$skill_dir/$skill" ]] || fail "refusing to overwrite existing $skill_dir/$skill"
   done
 done
+
+if [[ ${#AGENTS[@]} -gt 0 ]]; then
+  for runtime in "${RUNTIMES[@]}"; do
+    agent_dir="$(runtime_agent_dir "$runtime")"
+    [[ -n "$agent_dir" ]] || continue
+    for agent in "${AGENTS[@]}"; do
+      [[ ! -e "$TARGET/$agent_dir/$agent.md" ]] || fail "refusing to overwrite existing $agent_dir/$agent.md"
+    done
+  done
+fi
 
 mkdir -p "$TARGET/docs/decisions"
 cp "$KIT_ROOT/templates/product/AGENTS.md" "$TARGET/AGENTS.md"
@@ -164,7 +213,28 @@ for runtime in "${RUNTIMES[@]}"; do
   done
 done
 
+SKIPPED_AGENT_RUNTIMES=()
+if [[ ${#AGENTS[@]} -gt 0 ]]; then
+  for runtime in "${RUNTIMES[@]}"; do
+    agent_dir="$(runtime_agent_dir "$runtime")"
+    if [[ -z "$agent_dir" ]]; then
+      SKIPPED_AGENT_RUNTIMES+=("$runtime")
+      continue
+    fi
+    mkdir -p "$TARGET/$agent_dir"
+    for agent in "${AGENTS[@]}"; do
+      cp "$KIT_ROOT/agents/$agent.md" "$TARGET/$agent_dir/$agent.md"
+    done
+  done
+fi
+
 printf 'Installed Product Workflow Kit %s into %s\n' "$KIT_VERSION" "$TARGET"
 printf 'Configured runtimes: %s\n' "${RUNTIMES[*]}"
 printf 'Installed skills: %s\n' "${SKILLS[*]}"
+if [[ ${#AGENTS[@]} -gt 0 ]]; then
+  printf 'Installed agents: %s\n' "${AGENTS[*]}"
+  if [[ ${#SKIPPED_AGENT_RUNTIMES[@]} -gt 0 ]]; then
+    printf 'Skipped agents for runtime(s) without a subagent directory: %s\n' "${SKIPPED_AGENT_RUNTIMES[*]}"
+  fi
+fi
 printf 'No global configuration, hooks, plugins, permissions, or connectors were changed.\n'

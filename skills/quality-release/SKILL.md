@@ -8,7 +8,7 @@ description: >-
 
 # Quality and release
 
-Quality is selected by risk, not skipped because a change is small or an agent calls it a `nano` task.
+Quality is selected by risk, not skipped because a change is small or an agent calls it a `nano` task. For a bounded release-readiness question, delegate to `qa-lead` — see [`agents/README.md`](../../agents/README.md).
 
 ## Start with a risk scan
 

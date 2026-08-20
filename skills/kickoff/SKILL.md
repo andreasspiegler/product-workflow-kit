@@ -56,7 +56,7 @@ Select only the necessary activities. Examples:
 - A new data boundary may need a technical decision, security review, and rollout plan even with little UI work.
 - A straightforward known-pattern build may move directly to an issue, implementation plan, and proportionate verification.
 
-Use specialized agents or skills only for bounded questions that benefit from parallel expertise. The main conversation owns prioritization and cross-cutting decisions.
+Use specialized agents or skills only for bounded questions that benefit from parallel expertise; see [`agents/README.md`](../../agents/README.md) for which specialist fits which question. The main conversation owns prioritization and cross-cutting decisions.
 
 ## 4. Create an executable first slice
 

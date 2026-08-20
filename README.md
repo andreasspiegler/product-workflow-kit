@@ -135,6 +135,7 @@ Read [V1 to V2 migration](docs/v2-migration.md). In short: add the product templ
 agents/                 optional specialist role briefs
 commands/               V1 compatibility only; not for new V2 setups
 docs/                   adapter guide and migration notes
+examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
 skills/                 canonical V2 workflow skills
 templates/product/      product-local shared context
 hooks/                  V1 hook retained for existing projects only

@@ -35,6 +35,8 @@ With approval, create the product-local context from `templates/product/`:
 
 Record the workflow kit's Git commit or release tag in `PRODUCT.md`. This pins the kickoff to the kit version actually used; it must not silently follow a newer remote revision.
 
+For calibration on depth and tone, read `examples/microsite/` in the workflow kit checkout — a small, filled-in `PRODUCT.md`, `DESIGN.md`, and decision record. Use it as a reference for how much a section needs, not as text to copy.
+
 When GitHub is the chosen tracker, use GitHub Issues as the default work record for status, priorities, requirements, and acceptance criteria. Add a GitHub Project only when the user explicitly asks for a board or roadmap, or when the volume and coordination needs make it materially useful. Do not create a Project merely to satisfy the workflow. Do not use a parallel phase handoff or `STATUS.md`.
 
 ## 3. Triage the work

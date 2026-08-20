@@ -4,7 +4,7 @@ A portable, risk-based workflow kit for building digital products with Claude Co
 
 V2 replaces a rigid multi-agent pipeline with one shared product context and selective specialist work. It keeps human decisions deliberate, uses GitHub Issues as the default work record when GitHub is chosen, and treats launch as the start of outcome learning—not the end of the work.
 
-> V2 is the current state of `main`. The legacy V1 commands and hook remain in the repository only to avoid breaking existing installs; new setups should use the V2 skills and templates.
+> V2 is the current state of `main`. There are no remaining V1 installs; the legacy commands and hook were removed in v3.0.0.
 
 ## The model
 
@@ -129,20 +129,14 @@ See [runtime adapters](docs/runtime-adapters.md) for the portability boundary an
 
 [Impeccable](https://impeccable.style/) is a useful optional addition to the design step. When it is installed for the target runtime, the V2 design skill uses `shape`, `document`, `polish`, and `audit` as situational help—not as an automatic dependency. Its hooks and provider configuration must remain project-local and opt-in.
 
-## Migrating a V1 project
-
-Read [V1 to V2 migration](docs/v2-migration.md). In short: add the product templates, move only still-relevant durable rules to `docs/decisions/`, stop using phase handoffs and `STATUS.md`, and do not install the legacy session-start hook.
-
 ## Repository layout
 
 ```text
 agents/                 optional specialist role briefs
-commands/               V1 compatibility only; not for new V2 setups
-docs/                   adapter guide and migration notes
+docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
 skills/                 canonical V2 workflow skills
 templates/product/      product-local shared context
-hooks/                  V1 hook retained for existing projects only
 ```
 
 ## Principles

@@ -125,9 +125,18 @@ See [runtime adapters](docs/runtime-adapters.md) for the portability boundary an
 5. Verify proportionately. Before an external release, ask for explicit approval.
 6. For meaningful launches, check the intended outcome and decide what to do next.
 
-## Impeccable
+## Curated external influences
 
-[Impeccable](https://impeccable.style/) is a useful optional addition to the design step. When it is installed for the target runtime, the V2 design skill uses `shape`, `document`, `polish`, and `audit` as situational help—not as an automatic dependency. Its hooks and provider configuration must remain project-local and opt-in.
+These sources inform selected decision points in the kit. They are not bundled dependencies: external skills are considered only when they have been reviewed, deliberately installed project-locally from a pinned source, and explicitly approved for the task.
+
+| Source | What the kit uses it for | How it is handled |
+| --- | --- | --- |
+| [Impeccable](https://impeccable.style/) | UI changes with meaningful experience risk. | `product-design` explicitly offers one fitting activity — such as `shape`, `critique`, `clarify`, `distill`, `polish`, or `audit` — at the relevant moment. An offer is not an installation or invocation. |
+| [Taste Skill](https://www.tasteskill.dev/) | Establishing a UI direction before design or implementation. | The kit adopts its compact **design read**: surface or journey, user, intended interaction and visual language, and the existing system it should follow. It does not install the external skill. |
+| [Emil Kowalski's skills](https://emilkowal.ski/skill) | Purposeful motion and complex interaction decisions. | The kit uses the underlying principles: motion must earn its place, established accessible primitives come before hand-rolled interactions, and motion needs targeted verification. `animate`, `review-animations`, `find-animation-opportunities`, and `prototype` remain optional local additions for dedicated work. |
+| [Ponytail](https://github.com/dietrichgebert/ponytail) | Keeping implementation proportionate. | The kit adopts the implementation ladder, root-cause check, executable proof for nontrivial deterministic logic, and explicit upgrade triggers. `ponytail-review` and `ponytail-audit` are optional, project-local review aids — never an always-on plugin or a replacement for product, security, accessibility, or correctness review. |
+
+The links are sources and implementation references, not recommendations to install every skill. The product-local kit remains the source of truth for which workflows are available in a product.
 
 ## Repository layout
 

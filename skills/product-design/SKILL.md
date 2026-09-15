@@ -37,12 +37,25 @@ Do not turn a ticket into a mandatory wireframe, image-generation, or v0 exercis
 
 ## Impeccable integration
 
-For a user-facing UI task with meaningful visual or interaction-design scope, proactively offer Impeccable as an optional design-quality aid. Name the fitting activity and its purpose—for example `shape` to find a direction, `critique` to review a weak experience, `polish` to refine an implemented page, or `audit` to check production quality. Do not offer it for implementation-only changes or routine fixes with no meaningful experience risk.
+During design triage for a user-facing UI or interaction change with meaningful experience risk, explicitly offer the single most fitting Impeccable activity as an option and state its intended gain. If it would not reduce a real risk, state why it is not needed. This is a decision cue, not a default step: do not install or invoke Impeccable without explicit approval.
+
+Choose the activity from the moment in the work:
+
+- `shape` before implementation, when a new journey or visual/interactions direction needs to become concrete;
+- `critique` when an existing experience needs a diagnosis before deciding what to change;
+- `clarify` when labels, calls to action, instructions, or error messages create comprehension risk;
+- `distill` when a surface or journey is overloaded and reducing complexity is the central design goal;
+- `polish` after behavior and content are stable, when a bounded final refinement would improve a UI review or release;
+- `audit` after implementation, when accessibility, responsive behavior, or technical quality needs additional evidence.
+
+For other focused risks, use the matching available activity (for example `adapt` for device-fit or `harden` for error, i18n, and edge-state readiness). Do not offer Impeccable for implementation-only changes or routine fixes with no meaningful experience risk.
 
 When the [Impeccable](https://impeccable.style/) skill is installed in the target runtime, use it as an optional design-quality aid:
 
 - `shape` to explore a user-facing direction before implementation;
 - `document` to capture stable design-system decisions in `DESIGN.md`;
+- `clarify` to improve potentially confusing UX copy and feedback;
+- `distill` to remove unnecessary complexity from a surface or journey;
 - `polish` before a UI pull request when visual refinement is valuable;
 - `audit` as additional evidence for usability, visual, or accessibility review.
 

@@ -26,6 +26,7 @@ Do not create parallel status files, phase handoffs, or decision logs for the sa
 ## Working rules
 
 - Begin with a short risk triage: product impact and uncertainty; UI or accessibility risk; data, privacy, security, or reliability risk; reversibility and rollout risk.
+- For a user-facing UI or interaction change with meaningful experience risk, explicitly offer the single most fitting Impeccable activity as an option, with its intended gain. If it would not reduce a real risk, say why it is not needed. Never install or invoke Impeccable without explicit approval.
 - Select only the work that reduces a meaningful risk. A small copy fix does not require a staged product process; a new flow, data migration, or high-stakes decision may.
 - Keep decisions explicit. Record a decision only when it needs to survive the current issue or pull request.
 - Reuse the existing design system and code patterns. State uncertainty instead of inventing product facts, research, metrics, or approvals.

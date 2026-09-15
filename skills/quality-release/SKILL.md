@@ -36,6 +36,12 @@ Use automated tests where they protect repeatable behavior. Add focused manual c
 
 For nontrivial deterministic logic, leave the smallest runnable proof that would fail if the behavior regressed. Keep that proof proportionate to the risk; it can be a focused test, a reproducible command, or another executable check with a clear expected result.
 
+## Fresh evidence before completion
+
+Before stating that work is complete, fixed, passing, or ready to release — and before committing or opening a pull request — identify the check that would support that specific claim and run it fresh. Read its complete result, including failures, warnings, exit status, and coverage limits. A previous run, a clean-looking diff, or an agent report is not evidence for the current state.
+
+When automated verification is not credible for the risk, record the focused manual evidence instead: what was exercised, the environment or device, the observed result, and what remains unverified. State the actual status and limits when the evidence does not support a completion claim.
+
 ## Motion-specific verification
 
 When a change introduces or alters motion, verify proportionately that it serves a named user purpose and is appropriate for the action's frequency. Keyboard-initiated and high-frequency actions should stay instant or nearly imperceptible; decorative motion should not distract from functional or information-dense UI.

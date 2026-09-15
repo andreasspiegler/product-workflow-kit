@@ -34,6 +34,12 @@ Once the affected flow is understood, choose the first option that fully resolve
 
 For a bug, trace callers and the shared flow before editing the visible symptom; fix the root cause when that is the safer, contained choice. Simplicity is not a line-count target: do not trade away accessibility, security, authorization, error handling, or an established product contract for a smaller diff.
 
+## Debug unexpected behavior before fixing
+
+When a test, build, integration, performance check, or product behavior fails unexpectedly, investigate before proposing a fix. Start with the exact failure, a reproducible path where feasible, relevant recent changes, and the data or state at the boundary where the behavior diverges. Compare it with a working product pattern when one exists.
+
+State one concrete root-cause hypothesis and test it with the smallest useful change or observation. Do not stack speculative fixes or bundle unrelated refactoring while the cause is unknown. If three evidence-backed attempts fail, stop and summarize what is known; discuss whether the architecture, contract, or initial assumption needs to change before attempting a fourth fix.
+
 ## 2. Triage before planning
 
 Assess product uncertainty, experience/accessibility risk, technical/data/security risk, and rollout/reversibility. Explain the smallest useful path:

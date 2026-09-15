@@ -29,13 +29,30 @@ Before proposing a direction or writing UI code, state one concise design read: 
 
 If the available evidence would support materially different directions, ask one decision-oriented question. Otherwise state the read and continue. Do not invent an audience, brand tone, design system, or reference.
 
+## Triage motion when it is in scope
+
+Do not add motion by default. When a change introduces or alters it, decide first whether it earns its place:
+
+- frequency: keep keyboard-initiated and high-frequency actions instant; make frequent interaction motion near-imperceptible;
+- purpose: name the user benefit — feedback, spatial consistency, state indication, preventing a jarring change, explanation, or rare delight;
+- context: decorative motion does not belong on functional or information-dense UI, and motion must fit the product's established personality.
+
+For a dedicated motion task, use one of these only when it has been deliberately installed project-locally from a reviewed, pinned source:
+
+- `animate` to implement a motion decision that passed this triage;
+- `review-animations` to critique changed motion before release;
+- `find-animation-opportunities` to identify a short, high-conviction list when an interface feels static;
+- `prototype` to compare genuinely different UI directions before a consequential choice.
+
+These are optional, explicit aids. Do not install them globally or make their use a mandatory design phase.
+
 ## Choose the lightest useful design activity
 
 | Situation | Appropriate activity |
 | --- | --- |
 | Existing pattern, low UI risk | Specify the change in the issue and verify it in the implemented interface. |
 | New or altered journey | Map the main flow and states before coding. |
-| Consequential visual or interaction direction | Present a small number of concrete options and ask for a decision. |
+| Consequential visual or interaction direction | Present a small number of concrete options and ask for a decision. Each option must differ along a named axis, such as hierarchy, density, interaction model, or motion character, and name its trade-off; color or copy variations alone are not separate directions. |
 | Existing experience may be weak | Audit the journey against usability and accessibility risks. |
 | Repeated UI work | Document only the reusable rules and components in `DESIGN.md`. |
 

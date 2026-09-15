@@ -34,6 +34,12 @@ For each meaningful change, make the following visible in the issue or pull requ
 
 Use automated tests where they protect repeatable behavior. Add focused manual checks for visual, interaction, accessibility, and environment-specific behavior that tests do not cover.
 
+## Motion-specific verification
+
+When a change introduces or alters motion, verify proportionately that it serves a named user purpose and is appropriate for the action's frequency. Keyboard-initiated and high-frequency actions should stay instant or nearly imperceptible; decorative motion should not distract from functional or information-dense UI.
+
+Check `prefers-reduced-motion`, gate hover-only effects to suitable pointer devices, and avoid layout-heavy animation where a less expensive alternative exists. For gestures, verify interruption and responsiveness on a real device when feasible; use slow-motion or frame-by-frame inspection when the quality of timing, origin, or coordination is uncertain.
+
 ## Use test-first selectively
 
 Choose a test-first loop when the expected behavior is stable enough to describe before implementation and an executable test would reduce meaningful risk. It is especially useful for business rules, data transformations, authorization, API contracts, bug regressions, state transitions, and other deterministic behavior.

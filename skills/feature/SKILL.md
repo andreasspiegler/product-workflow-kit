@@ -42,6 +42,8 @@ Keep the issue and pull request as the work record. Make acceptance criteria, de
 
 Use the `product-design` and `quality-release` skills when they address identified uncertainty. Do not require a mockup, image generator, v0, new ADR, or a global status file merely because the workflow has them available.
 
+For a complex interaction primitive — for example a dialog, popover, menu, select, toast, drag-and-drop interaction, or virtualized list — first inspect the product's existing library and patterns. Reuse them when suitable. If none is suitable, evaluate a maintained accessible primitive before hand-rolling interaction, focus, dismissal, or keyboard behavior; ask before adding a dependency.
+
 ## 4. Verify, release, learn
 
 Before completion, verify the relevant acceptance criteria, regression risks, and accessibility or operational risks. Summarize what was checked and what remains uncertain in the pull request.

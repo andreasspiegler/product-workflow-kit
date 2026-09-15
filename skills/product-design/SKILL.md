@@ -84,6 +84,14 @@ When the [Impeccable](https://impeccable.style/) skill is installed in the targe
 
 Its output is evidence, not approval. An offer is not approval to install it. Do not install plugins or hooks globally. Keep any hook or provider configuration project-local and opt-in.
 
+## Optional web-interface review
+
+The Vercel `web-design-guidelines` skill is a focused code review after a web interface has been implemented. Offer it when changed UI code has material risk around interaction, keyboard or focus behavior, forms, async states, responsive layout, motion, semantic markup, or browser performance. Do not offer it for a static low-risk copy or styling adjustment without such a risk.
+
+It is distinct from Impeccable: Impeccable helps choose or assess an experience and its visual direction; this review checks implementation details in the changed UI code. Both can be useful when the risks are separate.
+
+Only use the skill when it was deliberately installed project-locally from a reviewed, pinned source and explicitly approved for the task. Its findings are follow-ups to assess against the product's established system and language, not a design direction or release approval. Apply the detailed verification and recording rules in `quality-release`.
+
 ## Optional visual tools
 
 Image generation and v0 can be useful for exploration or rapid prototypes, but neither is a required production path. Use them only after choosing the purpose, handling source and licensing constraints, and deciding how the resulting artifact will be validated. The code owner remains responsible for maintainable, accessible implementation.

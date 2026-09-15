@@ -42,6 +42,14 @@ When a change introduces or alters motion, verify proportionately that it serves
 
 Check `prefers-reduced-motion`, gate hover-only effects to suitable pointer devices, and avoid layout-heavy animation where a less expensive alternative exists. For gestures, verify interruption and responsiveness on a real device when feasible; use slow-motion or frame-by-frame inspection when the quality of timing, origin, or coordination is uncertain.
 
+## Targeted web-interface review
+
+For a user-facing web change with material interaction or accessibility risk, offer the optional Vercel `web-design-guidelines` review after implementation and before acceptance or release. It is useful for concrete checks around keyboard and focus behavior, forms, loading and error states, responsive layout, semantics, motion, and browser performance.
+
+Only run it when the skill is deliberately installed project-locally from a reviewed, pinned source and explicitly approved for the task. Review the changed UI files or a narrowly related pattern, not the whole repository by default. The upstream skill refreshes its rule source during a review, so record the reviewed files, source URL, and retrieval date with the findings.
+
+Treat file-and-line findings as evidence to assess, not an automatic verdict. Existing product patterns, the product language and brand, and applicable accessibility requirements take precedence; Vercel-specific copy and brand preferences are not universal rules. Keep manual browser, assistive-technology, and acceptance checks where they are necessary.
+
 ## Use test-first selectively
 
 Choose a test-first loop when the expected behavior is stable enough to describe before implementation and an executable test would reduce meaningful risk. It is especially useful for business rules, data transformations, authorization, API contracts, bug regressions, state transitions, and other deterministic behavior.

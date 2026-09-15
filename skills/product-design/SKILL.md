@@ -23,6 +23,12 @@ Identify:
 - required states: empty, loading, error, permissions, responsive, keyboard, and assistive technology where relevant;
 - the decision that needs evidence or human approval.
 
+## Make a design read
+
+Before proposing a direction or writing UI code, state one concise design read: the surface or journey, its user, the intended or established interaction and visual language, and the existing system or pattern it should lean on. Base it on the product context, the running interface, brand assets, and supplied references; existing product truth wins over generic aesthetic preference.
+
+If the available evidence would support materially different directions, ask one decision-oriented question. Otherwise state the read and continue. Do not invent an audience, brand tone, design system, or reference.
+
 ## Choose the lightest useful design activity
 
 | Situation | Appropriate activity |

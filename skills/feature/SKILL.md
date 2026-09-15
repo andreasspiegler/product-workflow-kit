@@ -22,6 +22,18 @@ Start with targeted local search (for example `rg`) to identify the affected fil
 
 State missing context and do not assume that existing behavior is accidental or wrong.
 
+## Prefer the smallest correct change
+
+Once the affected flow is understood, choose the first option that fully resolves the need:
+
+1. no change, if the product already behaves as intended;
+2. reuse an existing product pattern or code path;
+3. use the standard library or native platform capability;
+4. use an already installed, suitable dependency;
+5. only then add the minimum new code or dependency.
+
+For a bug, trace callers and the shared flow before editing the visible symptom; fix the root cause when that is the safer, contained choice. Simplicity is not a line-count target: do not trade away accessibility, security, authorization, error handling, or an established product contract for a smaller diff.
+
 ## 2. Triage before planning
 
 Assess product uncertainty, experience/accessibility risk, technical/data/security risk, and rollout/reversibility. Explain the smallest useful path:
@@ -43,6 +55,10 @@ Keep the issue and pull request as the work record. Make acceptance criteria, de
 Use the `product-design` and `quality-release` skills when they address identified uncertainty. Do not require a mockup, image generator, v0, new ADR, or a global status file merely because the workflow has them available.
 
 For a complex interaction primitive — for example a dialog, popover, menu, select, toast, drag-and-drop interaction, or virtualized list — first inspect the product's existing library and patterns. Reuse them when suitable. If none is suitable, evaluate a maintained accessible primitive before hand-rolling interaction, focus, dismissal, or keyboard behavior; ask before adding a dependency.
+
+When an intentional simplification has a known ceiling, record that ceiling and a concrete upgrade trigger in the issue or durable decision record. Do not create a separate debt ledger or leave the essential rationale only in a code comment.
+
+For an explicit complexity review, use `ponytail-review` on the current diff only when it has been deliberately installed project-locally from a reviewed, pinned source. For a one-off whole-repository simplification audit, use `ponytail-audit` on the same basis. They complement — never replace — correctness, accessibility, security, and product review.
 
 ## 4. Verify, release, learn
 

@@ -2,9 +2,9 @@
 
 A portable, risk-based workflow kit for building digital products with Claude Code, Codex, or OpenCode.
 
-V2 replaces a rigid multi-agent pipeline with one shared product context and selective specialist work. It keeps human decisions deliberate, uses GitHub Issues as the default work record when GitHub is chosen, and treats launch as the start of outcome learning—not the end of the work.
+V3 keeps the shift away from a rigid multi-agent pipeline: one shared product context, selective specialist work, deliberate human decisions, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
 
-> V2 is the current state of `main`. There are no remaining V1 installs; the legacy commands and hook were removed in v3.0.0.
+> V3 is the current state of `main`. `v3.1.0` adds explicit optional-tool state, quality-aid decisions in the work record, and a portable installer smoke test. There are no remaining V1 installs; the legacy commands and hook were removed in v3.0.0.
 
 ## The model
 
@@ -25,9 +25,9 @@ Runtime adapters
 
 The Git repository is the source of the kit. Each product uses a reviewed local copy or symlink and records the exact kit Git commit or release tag in `PRODUCT.md`. A kickoff never silently downloads a newer remote revision.
 
-## What V2 changes
+## What V3 establishes
 
-| V1 | V2 |
+| Earlier setup | V3 |
 | --- | --- |
 | Fixed seven-phase pipeline | Risk triage selects only discovery, design, technical, quality, and release work that is useful. |
 | Handoff documents and `STATUS.md` | GitHub Issues track work state; a Project is optional when a board or roadmap adds coordination value. The repository contains only durable product, design, and decision context. |
@@ -44,7 +44,7 @@ The Git repository is the source of the kit. Each product uses a reviewed local 
 | [`requirements-quality`](skills/requirements-quality/SKILL.md) | Clarifying complex, high-impact, or uncertain requirements directly in their issue. |
 | [`product-design`](skills/product-design/SKILL.md) | User journeys, interaction direction, system decisions, UX/a11y review, and optional Impeccable usage. |
 | [`quality-release`](skills/quality-release/SKILL.md) | Proportionate tests, release readiness, rollout risk, and outcome checks. |
-| [`sot-builder`](skills/sot-builder/SKILL.md) | V2 compatibility name for durable decision and contract records. |
+| [`sot-builder`](skills/sot-builder/SKILL.md) | Legacy-compatible name for durable decision and contract records. |
 | [`nano-banana`](skills/nano-banana/SKILL.md) | Optional, authorized visual exploration only. |
 
 The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions. See [`agents/README.md`](agents/README.md) for which specialist fits which question, and install one with `--agent <name>` below.
@@ -66,13 +66,21 @@ Choose a different or additional runtime deliberately:
 ./scripts/install.sh --target ../my-product --runtime claude --skill kickoff --skill feature
 ```
 
-Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, and success signal in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
+Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, success signal, and optional-tool state in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
 
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
 
 ### Versioning
 
 Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking change to a skill's contract or a template's structure, MINOR for a new skill or capability, PATCH for fixes and docs. `scripts/install.sh` pins to the nearest tag automatically; run `git tag -l` in the kit checkout to see available versions.
+
+## Maintainer checks
+
+Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, and confirms overwrite protection:
+
+```bash
+./scripts/test-install.sh
+```
 
 ## Manual installation
 
@@ -145,7 +153,7 @@ The links are sources and implementation references, not recommendations to inst
 agents/                 optional specialist role briefs
 docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
-skills/                 canonical V2 workflow skills
+skills/                 canonical v3 workflow skills
 templates/product/      product-local shared context
 ```
 

@@ -34,6 +34,10 @@ Mid-level product managers and designers who already follow the newsletter. They
 - Reuses the existing brand kit (colors, type, logo); no new visual identity work.
 - Runs on existing static hosting; no new infrastructure.
 
+## Optional tools
+
+None enabled.
+
 ## Success signal
 
 40 confirmed signups by 2026-09-11 (one week before the workshop), with fewer than 5% of signups needing manual follow-up because the form failed silently. Baseline: 0, this is the first run of this workshop format. Owner: product owner, checked weekly from launch.

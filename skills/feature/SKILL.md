@@ -60,6 +60,8 @@ Keep the issue and pull request as the work record. Make acceptance criteria, de
 
 Use the `product-design` and `quality-release` skills when they address identified uncertainty. Do not require a mockup, image generator, v0, new ADR, or a global status file merely because the workflow has them available.
 
+When triage considers an optional quality aid, keep one concise line in the issue or pull request: `Quality aids considered: <aid> — used, declined, or not available; reason.` Record only aids that were genuinely relevant, not a checklist. Before invoking an external aid, confirm its source, version or commit, runtime path, and approval in `PRODUCT.md`; if it is absent, offer adoption as a decision instead.
+
 For a complex interaction primitive — for example a dialog, popover, menu, select, toast, drag-and-drop interaction, or virtualized list — first inspect the product's existing library and patterns. Reuse them when suitable. If none is suitable, evaluate a maintained accessible primitive before hand-rolling interaction, focus, dismissal, or keyboard behavior; ask before adding a dependency.
 
 When an intentional simplification has a known ceiling, record that ceiling and a concrete upgrade trigger in the issue or durable decision record. Do not create a separate debt ledger or leave the essential rationale only in a code comment.

@@ -27,6 +27,10 @@ workflow_kit:
 
 <!-- Time, technical, legal, privacy, business, or team constraints. -->
 
+## Optional tools
+
+<!-- Record only deliberately enabled optional tools. For each: name, source and version or commit, runtime path, and approval. Write `None enabled.` if there are none. -->
+
 ## Success signal
 
 <!-- Observable behavior or metric, baseline if known, measurement window, and owner. -->

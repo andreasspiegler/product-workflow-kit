@@ -32,6 +32,7 @@ Do not create parallel status files, phase handoffs, or decision logs for the sa
 - Select only the work that reduces a meaningful risk. A small copy fix does not require a staged product process; a new flow, data migration, or high-stakes decision may.
 - Keep decisions explicit. Record a decision only when it needs to survive the current issue or pull request.
 - Reuse the existing design system and code patterns. State uncertainty instead of inventing product facts, research, metrics, or approvals.
+- Keep changes surgical: every changed line should trace to the current work item. Report unrelated cleanup instead of bundling it.
 - Define how the result will be verified before implementation. For shipped changes, also state the outcome signal and measurement window when relevant.
 - Do not deploy, publish, change production data, or make other external side effects without explicit approval.
 

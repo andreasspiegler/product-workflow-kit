@@ -34,6 +34,8 @@ Once the affected flow is understood, choose the first option that fully resolve
 
 For a bug, trace callers and the shared flow before editing the visible symptom; fix the root cause when that is the safer, contained choice. Simplicity is not a line-count target: do not trade away accessibility, security, authorization, error handling, or an established product contract for a smaller diff.
 
+Keep the diff scoped to the need. Match the surrounding style and do not reformat, rename, or refactor adjacent code that the change does not require. Remove only the imports, variables, or functions your own change made unused; report other dead code or improvement ideas instead of changing them. Before handing off, check that every changed line traces to the issue, acceptance criteria, or an explicit request.
+
 ## Debug unexpected behavior before fixing
 
 When a test, build, integration, performance check, or product behavior fails unexpectedly, investigate before proposing a fix. Start with the exact failure, a reproducible path where feasible, relevant recent changes, and the data or state at the boundary where the behavior diverges. Compare it with a working product pattern when one exists.

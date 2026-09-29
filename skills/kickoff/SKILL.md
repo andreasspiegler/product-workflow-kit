@@ -25,7 +25,7 @@ Do not invent a target user, a business case, a stack, or a deployment platform.
 
 ## 2. Establish portable context
 
-With approval, create the product-local context from `templates/product/`:
+If `scripts/install.sh` has already created the product-local context, fill it in rather than recreating it. Otherwise, with approval, create it from the kit's `templates/product/`:
 
 - `AGENTS.md` as the shared working agreement;
 - `CLAUDE.md` as the thin Claude Code adapter to that agreement;

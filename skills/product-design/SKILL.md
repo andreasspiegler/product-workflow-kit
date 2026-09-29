@@ -69,20 +69,12 @@ Choose the activity from the moment in the work:
 - `clarify` when labels, calls to action, instructions, or error messages create comprehension risk;
 - `distill` when a surface or journey is overloaded and reducing complexity is the central design goal;
 - `polish` after behavior and content are stable, when a bounded final refinement would improve a UI review or release;
-- `audit` after implementation, when accessibility, responsive behavior, or technical quality needs additional evidence.
+- `audit` after implementation, when accessibility, responsive behavior, or technical quality needs additional evidence;
+- `document` when stable design-system decisions should be captured in `DESIGN.md`.
 
 For other focused risks, use the matching available activity (for example `adapt` for device-fit or `harden` for error, i18n, and edge-state readiness). Do not offer Impeccable for implementation-only changes or routine fixes with no meaningful experience risk.
 
-When the [Impeccable](https://impeccable.style/) skill is installed in the target runtime, use it as an optional design-quality aid:
-
-- `shape` to explore a user-facing direction before implementation;
-- `document` to capture stable design-system decisions in `DESIGN.md`;
-- `clarify` to improve potentially confusing UX copy and feedback;
-- `distill` to remove unnecessary complexity from a surface or journey;
-- `polish` before a UI pull request when visual refinement is valuable;
-- `audit` as additional evidence for usability, visual, or accessibility review.
-
-Its output is evidence, not approval. An offer is not approval to install it. Do not install plugins or hooks globally. Keep any hook or provider configuration project-local and opt-in.
+Use [Impeccable](https://impeccable.style/) only when it is installed in the target runtime and recorded in `PRODUCT.md`. Its output is evidence, not approval. An offer is not approval to install it. Do not install plugins or hooks globally. Keep any hook or provider configuration project-local and opt-in.
 
 ## Optional web-interface review
 

@@ -25,7 +25,7 @@ assert_directory() {
 }
 
 assert_contains() {
-  rg -Fq -- "$2" "$1" || fail "expected $1 to contain: $2"
+  grep -Fq -- "$2" "$1" || fail "expected $1 to contain: $2"
 }
 
 mkdir -p "$TARGET"
@@ -57,5 +57,15 @@ assert_file "$TARGET/.opencode/agents/tech-lead.md"
 if "$KIT_ROOT/scripts/install.sh" --target "$TARGET" --runtime claude --kit-version smoke-test-version >/dev/null 2>&1; then
   fail 'installer accepted an overwrite of existing product context'
 fi
+
+CODEX_TARGET="$TEMP_ROOT/codex-only"
+mkdir -p "$CODEX_TARGET"
+"$KIT_ROOT/scripts/install.sh" \
+  --target "$CODEX_TARGET" \
+  --runtime codex \
+  --kit-version smoke-test-version \
+  > "$TEMP_ROOT/codex-install-output.txt"
+assert_file "$CODEX_TARGET/AGENTS.md"
+[[ ! -e "$CODEX_TARGET/CLAUDE.md" ]] || fail 'Codex-only install must not create CLAUDE.md'
 
 printf 'Installer smoke test passed.\n'

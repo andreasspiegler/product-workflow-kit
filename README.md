@@ -4,7 +4,7 @@ A portable, risk-based workflow kit for building digital products with Claude Co
 
 V3 keeps the shift away from a rigid multi-agent pipeline: one shared product context, selective specialist work, deliberate human decisions, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
 
-> V3 is the current state of `main`. `v3.1.0` adds explicit optional-tool state, quality-aid decisions in the work record, and a portable installer smoke test. There are no remaining V1 installs; the legacy commands and hook were removed in v3.0.0.
+> V3 is the current state of `main`; the legacy V1 commands and hook were removed in v3.0.0. Since then the kit has added explicit optional-tool state in `PRODUCT.md`, quality-aid decisions in the work record, a design read and fitting Impeccable offers before UI direction, purposeful motion and complexity checks, an optional web-interface review, root-cause debugging and fresh completion evidence, the surgical-changes rule, and an installer smoke test. Run `git tag -l` for released versions.
 
 ## The model
 
@@ -25,6 +25,43 @@ Runtime adapters
 
 The Git repository is the source of the kit. Each product uses a reviewed local copy or symlink and records the exact kit Git commit or release tag in `PRODUCT.md`. A kickoff never silently downloads a newer remote revision.
 
+## From idea to product
+
+The kit is a loop, not a pipeline. Every change starts from product context, passes a risk triage, is built as a small slice, and is verified before release. Everything else — sharper requirements, decision records, design work — is added only when the triage finds a risk it would reduce.
+
+```text
+Idea
+ │  kickoff ─────────────────► PRODUCT.md · DESIGN.md · risk triage
+ ▼
+Slice as issue ──────────────► scope, non-goals, acceptance criteria
+ │  requirements-quality         only if the requirement is ambiguous or high-impact
+ │  product-design               only with real experience or accessibility risk
+ │  docs/decisions/              only for decisions that outlive the issue
+ ▼
+Build ── feature ────────────► smallest correct change, scoped diff
+ ▼
+Verify & release ── quality-release ► evidence, explicit release approval
+ ▼
+Learn ───────────────────────► outcome signal → iterate · scale · stop · investigate
+ │
+ └──► next slice via feature
+```
+
+| Step | Question it answers | Skill | Result | Skip when |
+| --- | --- | --- | --- | --- |
+| Frame the product | What outcome, for whom, within which constraints? | [`kickoff`](skills/kickoff/SKILL.md) | `PRODUCT.md`, `DESIGN.md`, pinned kit version, risk triage | The product already has current context — start with `feature`. |
+| Cut a slice | What is the smallest testable step? | `kickoff` or `feature` | Issue with problem, non-goals, acceptance criteria, selected risk work, human gates | Never. |
+| Sharpen the specification | What exactly must be true, including conditions and failure cases? | [`requirements-quality`](skills/requirements-quality/SKILL.md) | Clearer acceptance criteria in the same issue | The requirement is clear and low-risk. |
+| Record durable decisions | Which decision or contract must outlive this issue? | Any step; optional [`sot-builder`](skills/sot-builder/SKILL.md) for a guided record | Record in `docs/decisions/` from its `TEMPLATE.md` | The decision only matters inside the issue or pull request. |
+| Shape the experience | Does the journey, interface, or content work for real users? | [`product-design`](skills/product-design/SKILL.md) | Design read, flow or UI direction, updates to `DESIGN.md` | The change has no meaningful UI, interaction, content, or accessibility risk. |
+| Build | What is the smallest correct change? | [`feature`](skills/feature/SKILL.md) | Pull request whose every line traces to the issue | Never. |
+| Verify and release | Does it meet the criteria, and is it safe to ship? | [`quality-release`](skills/quality-release/SKILL.md) | Verification record, rollback path, explicit release approval | Never skip verification; its depth scales with risk. |
+| Learn | Did the change achieve the intended outcome? | `quality-release` | Outcome check: signal, window, owner, and the decision it informs | The change has no material intended outcome. |
+
+There is no separate specification document. The specification of a slice lives in its issue as acceptance criteria; only decisions and contracts that must outlive the issue move into `docs/decisions/`. The repository keeps durable context, the tracker keeps work state.
+
+Human decision gates stay explicit at every step: consequential choices, external resources, paid tools, and releases wait for approval. [`examples/microsite`](examples/microsite/) shows a filled `PRODUCT.md`, `DESIGN.md`, and one decision record for calibrating depth.
+
 ## What V3 establishes
 
 | Earlier setup | V3 |
@@ -35,17 +72,17 @@ The Git repository is the source of the kit. Each product uses a reviewed local 
 | One Claude Code setup | Portable core plus thin, project-local adapters for Claude Code, Codex, and OpenCode. |
 | Deployment as the finish line | Relevant releases include a post-launch signal and a decision to iterate, scale, stop, or investigate. |
 
-## Core skills
+## Skills
 
-| Skill | Use it for |
-| --- | --- |
-| [`kickoff`](skills/kickoff/SKILL.md) | Starting a new product and creating credible, pinned product context. |
-| [`feature`](skills/feature/SKILL.md) | Extending an existing product from its current context and risk profile. |
-| [`requirements-quality`](skills/requirements-quality/SKILL.md) | Clarifying complex, high-impact, or uncertain requirements directly in their issue. |
-| [`product-design`](skills/product-design/SKILL.md) | User journeys, interaction direction, system decisions, UX/a11y review, and optional Impeccable usage. |
-| [`quality-release`](skills/quality-release/SKILL.md) | Proportionate tests, release readiness, rollout risk, and outcome checks. |
-| [`sot-builder`](skills/sot-builder/SKILL.md) | Legacy-compatible name for durable decision and contract records. |
-| [`nano-banana`](skills/nano-banana/SKILL.md) | Optional, authorized visual exploration only. |
+| Skill | Installed by default | Use it for |
+| --- | --- | --- |
+| [`kickoff`](skills/kickoff/SKILL.md) | Yes | Starting a new product and creating credible, pinned product context. |
+| [`feature`](skills/feature/SKILL.md) | Yes | Extending an existing product from its current context and risk profile. |
+| [`requirements-quality`](skills/requirements-quality/SKILL.md) | Yes | Clarifying complex, high-impact, or uncertain requirements directly in their issue. |
+| [`product-design`](skills/product-design/SKILL.md) | Yes | User journeys, interaction direction, system decisions, UX/a11y review, and optional Impeccable usage. |
+| [`quality-release`](skills/quality-release/SKILL.md) | Yes | Proportionate tests, release readiness, rollout risk, and outcome checks. |
+| [`sot-builder`](skills/sot-builder/SKILL.md) | No — select with `--skill` | Guided durable decision and contract records; the name is kept for compatibility. |
+| [`nano-banana`](skills/nano-banana/SKILL.md) | No — select with `--skill` | Optional, authorized visual exploration only. |
 
 The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions. See [`agents/README.md`](agents/README.md) for which specialist fits which question, and install one with `--agent <name>` below.
 
@@ -57,7 +94,7 @@ From the workflow kit checkout, install the shared context and selected skills i
 ./scripts/install.sh --target ../my-product --runtime claude
 ```
 
-The installer copies the product context, records the current kit version (nearest Git tag, or commit if untagged) and date in `PRODUCT.md`, and installs the five core skills locally. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
+The installer copies the product context (`CLAUDE.md` only when Claude Code is a selected runtime), records the current kit version (nearest Git tag, or commit if untagged) and date in `PRODUCT.md`, and installs the five core skills locally (`kickoff`, `feature`, `requirements-quality`, `product-design`, `quality-release`). `--skill` replaces that default selection, so name every skill you want, including optional ones such as `sot-builder`. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
 
 Choose a different or additional runtime deliberately:
 
@@ -76,7 +113,7 @@ Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking ch
 
 ## Maintainer checks
 
-Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, and confirms overwrite protection:
+Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, and checks that a Codex-only install gets no `CLAUDE.md`:
 
 ```bash
 ./scripts/test-install.sh
@@ -124,15 +161,6 @@ OpenCode can also discover project skills in `.agents/skills/`; use one local co
 
 See [runtime adapters](docs/runtime-adapters.md) for the portability boundary and update policy.
 
-## Product operating model
-
-1. Read the product context, existing code, and the active GitHub issue or pull request.
-2. Triage product, experience, technical, and delivery risk.
-3. Select the smallest activities that remove meaningful uncertainty.
-4. Keep acceptance criteria and work status in the chosen tracker; keep durable context in the repository.
-5. Verify proportionately. Before an external release, ask for explicit approval.
-6. For meaningful launches, check the intended outcome and decide what to do next.
-
 ## Curated external influences
 
 These sources inform selected decision points in the kit. They are not bundled dependencies: external skills are considered only when they have been reviewed, deliberately installed project-locally from a pinned source, and explicitly approved for the task.
@@ -154,6 +182,7 @@ The links are sources and implementation references, not recommendations to inst
 agents/                 optional specialist role briefs
 docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
+scripts/                installer and installer smoke test
 skills/                 canonical v3 workflow skills
 templates/product/      product-local shared context
 ```

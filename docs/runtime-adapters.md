@@ -4,7 +4,7 @@ The workflow kit has one portable core and thin adapters. The portable core is `
 
 ## Product-local setup
 
-Keep the product context in the product repository. Copy the files from `templates/product/`, then replace `{{WORKFLOW_KIT_VERSION}}` with the kit Git commit or release tag used for the setup. This makes a kickoff reproducible without silently fetching a newer remote version.
+Keep the product context in the product repository. The normal path is `scripts/install.sh` (see the [README](../README.md#start-a-product-with-a-pinned-kit-version)), which copies `templates/product/` and fills in the kit version and install date. For a manual setup, copy the files from `templates/product/`, then replace `{{WORKFLOW_KIT_VERSION}}` with the kit Git commit or release tag and `{{DATE}}` with the install date. This makes a kickoff reproducible without silently fetching a newer remote version.
 
 Use a deliberate kit update, review the change, and record the new version only when a product opts in.
 

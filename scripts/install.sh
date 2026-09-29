@@ -153,7 +153,10 @@ if [[ -z "$KIT_VERSION" ]]; then
 fi
 [[ -n "$KIT_VERSION" ]] || fail "could not determine kit version; pass --kit-version explicitly"
 
-CONTEXT_PATHS=(AGENTS.md CLAUDE.md PRODUCT.md DESIGN.md docs/decisions)
+CONTEXT_PATHS=(AGENTS.md PRODUCT.md DESIGN.md docs/decisions)
+if has_value claude "${RUNTIMES[@]}"; then
+  CONTEXT_PATHS+=(CLAUDE.md)
+fi
 for relative_path in "${CONTEXT_PATHS[@]}"; do
   [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
 done
@@ -185,7 +188,9 @@ fi
 
 mkdir -p "$TARGET/docs/decisions"
 cp "$KIT_ROOT/templates/product/AGENTS.md" "$TARGET/AGENTS.md"
-cp "$KIT_ROOT/templates/product/CLAUDE.md" "$TARGET/CLAUDE.md"
+if has_value claude "${RUNTIMES[@]}"; then
+  cp "$KIT_ROOT/templates/product/CLAUDE.md" "$TARGET/CLAUDE.md"
+fi
 cp "$KIT_ROOT/templates/product/DESIGN.md" "$TARGET/DESIGN.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/README.md" "$TARGET/docs/decisions/README.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/TEMPLATE.md" "$TARGET/docs/decisions/TEMPLATE.md"

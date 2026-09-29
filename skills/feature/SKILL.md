@@ -58,7 +58,7 @@ Assess product uncertainty, experience/accessibility risk, technical/data/securi
 
 ## 3. Work the slice
 
-Keep the issue and pull request as the work record. Make acceptance criteria, design evidence, implementation choices, checks, and remaining risks easy to find. Keep reusable product and design direction in `PRODUCT.md` or `DESIGN.md`; keep durable decisions in `docs/decisions/`.
+Keep the issue and pull request as the work record. Make acceptance criteria, design evidence, implementation choices, checks, and remaining risks easy to find. For a nontrivial slice, map each planned task to the acceptance criterion it serves before implementation: a criterion without a task is a gap, and a task without a criterion is scope to question. Keep reusable product and design direction in `PRODUCT.md` or `DESIGN.md`; keep durable decisions in `docs/decisions/`.
 
 Use the `product-design` and `quality-release` skills when they address identified uncertainty. Do not require a mockup, image generator, v0, new ADR, or a global status file merely because the workflow has them available.
 

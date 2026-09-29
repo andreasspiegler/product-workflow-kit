@@ -27,6 +27,14 @@ workflow_kit:
 
 <!-- Time, technical, legal, privacy, business, or team constraints. -->
 
+## Data and privacy
+
+<!-- Personal or sensitive data the product processes; which processors or AI providers receive which data; minimization before sharing; retention, deletion, and export; data processing agreements and privacy notices. Write `No personal data.` if none. -->
+
+## Environments
+
+<!-- Local, staging, and production setup; where secrets live and who can access them; who may deploy. -->
+
 ## Optional tools
 
 <!-- Record only deliberately enabled optional tools. For each: name, source and version or commit, runtime path, and approval. Write `None enabled.` if there are none. -->

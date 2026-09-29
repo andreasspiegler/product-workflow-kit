@@ -20,6 +20,8 @@ The local skill directory can be a copy or a symlink depending on the team's upd
 
 Hooks, plugin manifests, model permissions, browser access, MCP connectors, and subagent configuration are runtime-specific. They remain opt-in adapters and should never be installed globally by default. A project can use the same product workflow without having identical configuration files.
 
+Deny agent read access to `.env*` and other secret files through each runtime's permission configuration. This is a project-local setting; the portable rule lives in `AGENTS.md`.
+
 ## Runtime-neutral operating model
 
 1. Start from the product context and the current GitHub issue.

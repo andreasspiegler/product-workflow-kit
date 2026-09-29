@@ -34,6 +34,14 @@ Mid-level product managers and designers who already follow the newsletter. They
 - Reuses the existing brand kit (colors, type, logo); no new visual identity work.
 - Runs on existing static hosting; no new infrastructure.
 
+## Data and privacy
+
+Signup collects name, email, and dietary preference. The data goes to the form backend and the confirmation-mail service; no AI provider receives it. Data processing agreements with both services are required before launch, and the page links a privacy notice. Signups are deleted 30 days after the workshop; individual deletion on request by email.
+
+## Environments
+
+Local preview and production only — a single static page does not need staging. Form-backend and mail keys live in the hosting provider's environment settings, never in the repository. The product owner deploys.
+
 ## Optional tools
 
 None enabled.

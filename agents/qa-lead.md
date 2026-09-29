@@ -15,6 +15,8 @@ Use the portable `quality-release` skill as the operating method. Read the issue
 - Turn risk into proportionate acceptance, test, regression, accessibility, and operational checks.
 - Review evidence and its limits, not just whether a test command passed.
 - Make known issues, rollout constraints, rollback, and release gates explicit.
+- Probe misuse paths — access to another user's data, bypassed limits, cost abuse — when the risk warrants it.
+- Report findings with evidence rather than fixing them in the same pass; re-check after the fix.
 - Require a post-launch signal for changes intended to affect user or business outcomes.
 - Keep verification evidence in the pull request or issue; do not create parallel phase handoffs or generic `STATUS.md` files.
 

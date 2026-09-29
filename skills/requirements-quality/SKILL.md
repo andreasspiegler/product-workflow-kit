@@ -26,6 +26,8 @@ Check the issue for:
 - hidden assumptions, undefined terms, and missing ownership or boundaries;
 - implementation bias that states a solution instead of the required outcome;
 - missing unhappy paths, permissions, state transitions, or recovery behavior;
+- misuse and cost: who may access or change what, abuse such as brute force or scraping, rate limits, and cost exposure from automated or paid API calls;
+- data-protection behavior: minimization before data reaches a third party, retention, deletion, and export;
 - acceptance criteria that cannot be observed or tested;
 - relevant non-functional constraints: privacy, security, accessibility, reliability, performance, or compatibility.
 

@@ -19,6 +19,8 @@ If a repository already exists, read its `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`,
 - existing evidence, assets, constraints, and non-goals;
 - important uncertainties and decisions;
 - success signal and a plausible measurement window;
+- personal or sensitive data, and which processors or AI providers would receive it;
+- the environments needed (local, staging, production) and where secrets will live;
 - whether GitHub is the desired work tracker and where the product should live.
 
 Do not invent a target user, a business case, a stack, or a deployment platform.
@@ -68,6 +70,8 @@ Propose the smallest testable slice with:
 - a human decision gate for consequential choices;
 - verification evidence required before release;
 - a post-release outcome check when the slice ships.
+
+When the product clearly needs several features, optionally propose a feature map as issues: each with a short outcome, priority, and dependencies, ordered so that foundations such as authentication or the data model come first. Create the issues only with approval, and keep the map in the tracker rather than in a status file.
 
 Wait for explicit direction before crossing a human gate, creating external resources, spending paid credits, or releasing to users.
 

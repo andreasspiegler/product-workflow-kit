@@ -4,7 +4,7 @@ A portable, risk-based workflow kit for building digital products with Claude Co
 
 V3 keeps the shift away from a rigid multi-agent pipeline: one shared product context, selective specialist work, deliberate human decisions, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
 
-> V3 is the current state of `main`; the legacy V1 commands and hook were removed in v3.0.0. Since then the kit has added explicit optional-tool state in `PRODUCT.md`, quality-aid decisions in the work record, a design read and fitting Impeccable offers before UI direction, purposeful motion and complexity checks, an optional web-interface review, root-cause debugging and fresh completion evidence, the surgical-changes rule, and an installer smoke test. Run `git tag -l` for released versions.
+> V3 is the current state of `main`; the legacy V1 commands and hook were removed in v3.0.0. Since then the kit has added explicit optional-tool state in `PRODUCT.md`, quality-aid decisions in the work record, a design read and fitting Impeccable offers before UI direction, purposeful motion and complexity checks, an optional web-interface review, root-cause debugging and fresh completion evidence, the surgical-changes rule, an installer smoke test, and explicit data, privacy, environment, misuse, and first-launch readiness checks. Run `git tag -l` for released versions.
 
 ## The model
 
@@ -14,7 +14,7 @@ Workflow Kit (versioned Git repository)
         ▼
 Product-local context (pinned kit commit)
   ├── AGENTS.md       shared working agreement
-  ├── PRODUCT.md      outcome, scope, constraints, success signal
+  ├── PRODUCT.md      outcome, scope, constraints, data, environments, success signal
   ├── DESIGN.md       reusable experience and design direction
   └── docs/decisions/ durable decisions and contracts
         │
@@ -49,13 +49,13 @@ Learn ───────────────────────► o
 
 | Step | Question it answers | Skill | Result | Skip when |
 | --- | --- | --- | --- | --- |
-| Frame the product | What outcome, for whom, within which constraints? | [`kickoff`](skills/kickoff/SKILL.md) | `PRODUCT.md`, `DESIGN.md`, pinned kit version, risk triage | The product already has current context — start with `feature`. |
+| Frame the product | What outcome, for whom, within which constraints? | [`kickoff`](skills/kickoff/SKILL.md) | `PRODUCT.md` (including data, privacy, and environments), `DESIGN.md`, pinned kit version, risk triage, optional feature map as issues | The product already has current context — start with `feature`. |
 | Cut a slice | What is the smallest testable step? | `kickoff` or `feature` | Issue with problem, non-goals, acceptance criteria, selected risk work, human gates | Never. |
 | Sharpen the specification | What exactly must be true, including conditions and failure cases? | [`requirements-quality`](skills/requirements-quality/SKILL.md) | Clearer acceptance criteria in the same issue | The requirement is clear and low-risk. |
 | Record durable decisions | Which decision or contract must outlive this issue? | Any step; optional [`sot-builder`](skills/sot-builder/SKILL.md) for a guided record | Record in `docs/decisions/` from its `TEMPLATE.md` | The decision only matters inside the issue or pull request. |
 | Shape the experience | Does the journey, interface, or content work for real users? | [`product-design`](skills/product-design/SKILL.md) | Design read, flow or UI direction, updates to `DESIGN.md` | The change has no meaningful UI, interaction, content, or accessibility risk. |
 | Build | What is the smallest correct change? | [`feature`](skills/feature/SKILL.md) | Pull request whose every line traces to the issue | Never. |
-| Verify and release | Does it meet the criteria, and is it safe to ship? | [`quality-release`](skills/quality-release/SKILL.md) | Verification record, rollback path, explicit release approval | Never skip verification; its depth scales with risk. |
+| Verify and release | Does it meet the criteria, and is it safe to ship? | [`quality-release`](skills/quality-release/SKILL.md) | Verification record mapping each criterion to evidence, rollback path, explicit release approval, first-launch readiness, production smoke check | Never skip verification; its depth scales with risk. |
 | Learn | Did the change achieve the intended outcome? | `quality-release` | Outcome check: signal, window, owner, and the decision it informs | The change has no material intended outcome. |
 
 There is no separate specification document. The specification of a slice lives in its issue as acceptance criteria; only decisions and contracts that must outlive the issue move into `docs/decisions/`. The repository keeps durable context, the tracker keeps work state.
@@ -103,7 +103,7 @@ Choose a different or additional runtime deliberately:
 ./scripts/install.sh --target ../my-product --runtime claude --skill kickoff --skill feature
 ```
 
-Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, success signal, and optional-tool state in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
+Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, data and privacy, environments, success signal, and optional-tool state in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
 
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
 

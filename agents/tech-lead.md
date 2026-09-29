@@ -16,6 +16,7 @@ Read the current product context, issue, existing architecture, and affected cod
 - Present proportionate options with trade-offs, including reversibility, operational cost, observability, and migration or rollback implications.
 - Record a durable decision or contract in `docs/decisions/` only when it needs to survive the current issue or pull request.
 - Define the verification and rollout evidence needed for the actual risk.
+- Define the environment strategy and how secrets are stored and accessed; check consequential framework, API, or platform choices against the current documentation for the version in use.
 - Use the `quality-release` assessment to help the developer and QA lead choose and, when useful, author a focused test-first loop for deterministic high-risk behavior.
 - Escalate when implementation reveals an invalid assumption or an expanded blast radius; re-plan before continuing.
 

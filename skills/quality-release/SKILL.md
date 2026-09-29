@@ -16,6 +16,7 @@ Read the issue or pull request, relevant product context, and the changed code. 
 
 - product impact and uncertainty;
 - data integrity, privacy, security, and authorization;
+- misuse: access to another user's data, bypassed limits, and cost abuse;
 - reliability, performance, and integrations;
 - user experience, accessibility, and supported devices;
 - blast radius, reversibility, rollout, and observability.
@@ -26,7 +27,7 @@ Then choose the smallest verification set that gives credible evidence. A low-ri
 
 For each meaningful change, make the following visible in the issue or pull request:
 
-1. Acceptance criteria and expected behavior.
+1. Acceptance criteria and expected behavior, each mapped to the check that covers it and its result; name every criterion that remains unverified.
 2. Checks performed, their result, and coverage limits.
 3. Important edge, error, and regression scenarios.
 4. Known risks, deferred work, and rollback or mitigation path.
@@ -41,6 +42,10 @@ For nontrivial deterministic logic, leave the smallest runnable proof that would
 Before stating that work is complete, fixed, passing, or ready to release — and before committing or opening a pull request — identify the check that would support that specific claim and run it fresh. Read its complete result, including failures, warnings, exit status, and coverage limits. A previous run, a clean-looking diff, or an agent report is not evidence for the current state.
 
 When automated verification is not credible for the risk, record the focused manual evidence instead: what was exercised, the environment or device, the observed result, and what remains unverified. State the actual status and limits when the evidence does not support a completion claim.
+
+## Separate verification for high risk
+
+For a high-risk change — authentication, payments, personal data, a migration, or a first public launch — verify in a pass separate from the one that built it, for example by delegating to `qa-lead`. That pass reports findings with evidence and does not fix them; after the fix, re-run the affected checks.
 
 ## Motion-specific verification
 
@@ -71,8 +76,21 @@ When test-first is appropriate:
 
 Treat a passing test as evidence, not as proof that the whole product change is ready. Keep the acceptance criteria, test evidence, and remaining limits visible in the issue or pull request.
 
+## First public launch
+
+Before a product first becomes publicly available, confirm proportionately — and record in the launch issue or pull request — that:
+
+- errors are tracked and someone is notified;
+- availability is monitored with a known alert path;
+- the success signal from `PRODUCT.md` can actually be measured;
+- authentication and costly endpoints are rate-limited;
+- the privacy notices, data processing agreements, and deletion paths named in `PRODUCT.md` are in place;
+- backups or data recovery and a rollback path exist.
+
+Mark an item not applicable only with a reason. This is a one-time readiness check, not a gate for every later release.
+
 ## Release and outcome
 
-Do not treat a merge or deployment as completion. Before release, confirm the target environment, rollback path, monitoring or logs, and required approval. Do not deploy or change production systems without explicit authorization.
+Do not treat a merge or deployment as completion. Before release, confirm the target environment, rollback path, monitoring or logs, and required approval. Do not deploy or change production systems without explicit authorization. After a deployment, run a short smoke check of the critical path against the production environment and record the result.
 
 For changes with product impact, write the outcome check: signal, baseline if available, measurement window, owner, and the decision that the result will inform (iterate, scale, stop, or investigate).

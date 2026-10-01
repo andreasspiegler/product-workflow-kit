@@ -68,7 +68,7 @@ Human decision gates stay explicit at every step: consequential choices, externa
 | --- | --- |
 | Fixed seven-phase pipeline | Risk triage selects only discovery, design, technical, quality, and release work that is useful. |
 | Handoff documents and `STATUS.md` | GitHub Issues track work state; a Project is optional when a board or roadmap adds coordination value. The repository contains only durable product, design, and decision context. |
-| Nano Banana → v0 as the design path | Impeccable, image generation, and v0 are optional tools selected for a concrete purpose. |
+| Nano Banana → v0 as the design path | Reference discovery, Claude Design, Impeccable, image generation, and v0 are selected for a concrete purpose. |
 | One Claude Code setup | Portable core plus thin, project-local adapters for Claude Code, Codex, and OpenCode. |
 | Deployment as the finish line | Relevant releases include a post-launch signal and a decision to iterate, scale, stop, or investigate. |
 
@@ -79,7 +79,7 @@ Human decision gates stay explicit at every step: consequential choices, externa
 | [`kickoff`](skills/kickoff/SKILL.md) | Yes | Starting a new product and creating credible, pinned product context. |
 | [`feature`](skills/feature/SKILL.md) | Yes | Extending an existing product from its current context and risk profile. |
 | [`requirements-quality`](skills/requirements-quality/SKILL.md) | Yes | Clarifying complex, high-impact, or uncertain requirements directly in their issue. |
-| [`product-design`](skills/product-design/SKILL.md) | Yes | User journeys, interaction direction, system decisions, UX/a11y review, and optional Impeccable usage. |
+| [`product-design`](skills/product-design/SKILL.md) | Yes | User journeys, reference discovery, design systems, motion/3D decisions, UX/a11y review, and optional design tools. |
 | [`quality-release`](skills/quality-release/SKILL.md) | Yes | Proportionate tests, release readiness, rollout risk, and outcome checks. |
 | [`sot-builder`](skills/sot-builder/SKILL.md) | No — select with `--skill` | Guided durable decision and contract records; the name is kept for compatibility. |
 | [`nano-banana`](skills/nano-banana/SKILL.md) | No — select with `--skill` | Optional, authorized visual exploration only. |
@@ -160,6 +160,24 @@ cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
 OpenCode can also discover project skills in `.agents/skills/`; use one local convention per product. Put OpenCode-specific agents, providers, and permissions in `.opencode/` only when required.
 
 See [runtime adapters](docs/runtime-adapters.md) for the portability boundary and update policy.
+
+## Design references and optional capabilities
+
+For a new surface, redesign, or unresolved direction, `product-design` actively seeks a small set of relevant references, normally three to five. Each links a specific example and explains its relevance, the principle to adapt, and its limits. Revisit the search when the direction or user context changes; routine changes within an established system do not need another search.
+
+| Resource | Use when |
+| --- | --- |
+| [Dribbble](https://dribbble.com/) | Exploring typography, composition, visual directions, and interface details. |
+| [Awwwards](https://www.awwwards.com/) | Studying distinctive live websites, storytelling, and interaction. |
+| [Mobbin](https://mobbin.com/) | Comparing real product screens, states, and connected flows. |
+| [Lummi](https://www.lummi.ai/) | Exploring image direction, illustrations, or visual assets; check rights before use. |
+| [Claude Design](https://support.claude.com/en/articles/14604397-set-up-your-design-system-in-claude-design) | A new design system, inconsistent styling, or meaningful prototype alternatives warrant an explicit offer. Use a compact product brief and review the output before adopting it. |
+| [GSAP](https://gsap.com/docs/v3/) | Coordinated timelines, scroll-driven storytelling, or complex SVG animation justify more than native animation. |
+| [Three.js](https://threejs.org/) | Interactive product views, spatial explanations, or a defining 3D scene justify live 3D. |
+
+Reference access uses available, authorized tools; unavailable accounts or paid access are stated as limitations. Claude Design is optional and works through a manual brief and artifact handoff when a runtime integration is unavailable. Enabled authoring tools are recorded in `PRODUCT.md`; accepted design rules belong in `DESIGN.md` and the actual product components. Slice-specific explorations stay in the issue or pull request.
+
+GSAP and Three.js are implementation options, not bundled dependencies. Choose the intended effect first, compare a simpler alternative, and assess mobile performance, accessibility, maintenance, and fallback behavior before adding a dependency. `quality-release` includes focused motion and 3D checks. None of these resources adds a mandatory phase or authorizes installation, paid access, or external publication.
 
 ## Curated external influences
 

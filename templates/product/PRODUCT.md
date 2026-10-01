@@ -37,7 +37,7 @@ workflow_kit:
 
 ## Optional tools
 
-<!-- Record only deliberately enabled optional tools. For each: name, source and version or commit, runtime path, and approval. Write `None enabled.` if there are none. -->
+<!-- Record only deliberately enabled optional tools. For each: name, source and version or commit, runtime path (or service access point), and approval. For an unversioned service, record the documentation checked and date instead of inventing a version. Write `None enabled.` if there are none. -->
 
 ## Success signal
 

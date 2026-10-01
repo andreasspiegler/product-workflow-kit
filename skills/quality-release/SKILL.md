@@ -47,11 +47,13 @@ When automated verification is not credible for the risk, record the focused man
 
 For a high-risk change — authentication, payments, personal data, a migration, or a first public launch — verify in a pass separate from the one that built it, for example by delegating to `qa-lead`. That pass reports findings with evidence and does not fix them; after the fix, re-run the affected checks.
 
-## Motion-specific verification
+## Motion and 3D verification
 
 When a change introduces or alters motion, verify proportionately that it serves a named user purpose and is appropriate for the action's frequency. Keyboard-initiated and high-frequency actions should stay instant or nearly imperceptible; decorative motion should not distract from functional or information-dense UI.
 
 Check `prefers-reduced-motion`, gate hover-only effects to suitable pointer devices, and avoid layout-heavy animation where a less expensive alternative exists. For gestures, verify interruption and responsiveness on a real device when feasible; use slow-motion or frame-by-frame inspection when the quality of timing, origin, or coordination is uncertain.
+
+For interactive 3D, check loading and failure states, the agreed mobile performance and asset budget, and a usable fallback when rendering is unavailable. Essential information and actions must remain accessible outside the canvas; verify keyboard and touch controls where interaction is required. Reduced-motion preferences must also affect camera movement and autoplay. Check that rendering and animation stop or release resources when the scene is hidden or removed. Record the devices and fallback paths actually exercised, and name any remaining limits.
 
 ## Targeted web-interface review
 

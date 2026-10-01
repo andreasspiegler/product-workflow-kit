@@ -18,6 +18,14 @@ This is a living, concise record of the product's interaction and visual decisio
 
 <!-- Existing component library, tokens, content voice, and patterns to reuse. -->
 
+## Defining references
+
+<!-- Only enduring influences: specific example link, relevance, principle to adapt, and limits. Keep slice-specific inspiration in the issue or pull request. -->
+
+## Motion and 3D
+
+<!-- Only when relevant: intended benefit and character, suitable implementation, reduced-motion behavior, accessible alternative, mobile performance/asset budget, and fallback. Link durable technology decisions rather than duplicating them. -->
+
 ## Required states
 
 <!-- Empty, loading, error, permissions, mobile/responsive, keyboard and assistive-technology considerations where relevant. -->

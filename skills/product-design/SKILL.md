@@ -29,13 +29,34 @@ Before proposing a direction or writing UI code, state one concise design read: 
 
 If the available evidence would support materially different directions, ask one decision-oriented question. Otherwise state the read and continue. Do not invent an audience, brand tone, design system, or reference.
 
-## Triage motion when it is in scope
+## Find references when direction needs evidence
 
-Do not add motion by default. When a change introduces or alters it, decide first whether it earns its place:
+For a new surface, a redesign, or an unresolved visual or interaction direction, actively seek relevant references before proposing options. Revisit the search when the audience, journey, or direction materially changes, or a review exposes a specific gap. A routine change within an established system does not need a new search.
+
+Choose sources for the question:
+
+| Source | Useful for |
+| --- | --- |
+| [Dribbble](https://dribbble.com/) | Visual directions, typography, composition, and interface details. |
+| [Awwwards](https://www.awwwards.com/) | Live websites, distinctive art direction, storytelling, and interaction. |
+| [Mobbin](https://mobbin.com/) | Screens, states, and connected user flows from real products. |
+| [Lummi](https://www.lummi.ai/) | Image direction, illustrations, and visual assets. |
+
+Use the smallest useful set, normally three to five references; do not browse every portal by default. For each, link the specific example and state its relevance, the principle worth adapting, and what does not fit this product. Inspect the live flow where interaction matters; a screenshot or award is not usability evidence. Existing product and brand constraints still take precedence.
+
+Use available, authorized access. If a reference requires an unavailable account or paid access, state the limitation and use accessible evidence or supplied references; do not invent observations. Check usage rights before incorporating an asset. Keep slice-specific references in the issue or pull request and only enduring influences in `DESIGN.md`.
+
+## Triage motion and 3D when they are in scope
+
+Do not add motion or 3D by default. When a change introduces or alters either, decide first whether it earns its place:
 
 - frequency: keep keyboard-initiated and high-frequency actions instant; make frequent interaction motion near-imperceptible;
-- purpose: name the user benefit — feedback, spatial consistency, state indication, preventing a jarring change, explanation, or rare delight;
+- purpose: name the intended benefit — feedback, spatial consistency, state indication, preventing a jarring change, explanation, product exploration, brand expression, or rare delight;
 - context: decorative motion does not belong on functional or information-dense UI, and motion must fit the product's established personality.
+
+Choose implementation after agreeing on the intended effect. Reuse suitable product capabilities and native CSS or browser APIs first. Consider [GSAP](https://gsap.com/docs/v3/) for coordinated timelines, scroll-driven storytelling, or complex SVG animation. Consider [Three.js](https://threejs.org/) for interactive product views, spatial explanations, or a defining 3D scene. Neither library is a default dependency, and a 3D image or video may be sufficient when live interaction adds no value.
+
+For a consequential choice, compare the simpler alternative, intended benefit, mobile performance and asset budget, accessibility, maintenance cost, and fallback behavior. Prototype the uncertain effect before committing to a large implementation. Check current documentation and licensing for the chosen version, and obtain approval before adding a dependency. Keep the decision in the issue or, if it outlives the slice, `docs/decisions/`; record reusable motion and 3D rules in `DESIGN.md`. Verify the result with `quality-release`.
 
 For a dedicated motion task, use one of these only when it has been deliberately installed project-locally from a reviewed, pinned source:
 
@@ -87,6 +108,16 @@ Only use the skill when it was deliberately installed project-locally from a rev
 ## Optional visual tools
 
 Image generation and v0 can be useful for exploration or rapid prototypes, but neither is a required production path. Use them only after choosing the purpose, handling source and licensing constraints, and deciding how the resulting artifact will be validated. The code owner remains responsible for maintainable, accessible implementation.
+
+### Claude Design
+
+Explicitly offer [Claude Design](https://support.claude.com/en/articles/14604397-set-up-your-design-system-in-claude-design) when a new design system, consolidation of inconsistent styling, or comparison of materially different prototypes would benefit from it. State the intended gain; it is an optional authoring tool, distinct from reference discovery and design review.
+
+Use it only when available and authorized for the task, and record enabled use in `PRODUCT.md`. Confirm which assets or code may be shared under the product's data and privacy constraints. Do not assume a subscription, connector, or Claude Code runtime; a manual brief and artifact handoff can work with Codex or OpenCode too.
+
+Provide a compact brief: product outcome, audience and main journey, existing components and brand assets, selected references with rationale, necessary states, and accessibility and implementation constraints. Start from the existing system when one exists. Treat generated tokens, components, and prototypes as proposals to review for brand fit, consistency, required states, accessibility, and feasibility in the actual stack.
+
+Carry accepted reusable rules into `DESIGN.md` and the product's actual tokens and components; keep exploration links and slice-specific details in the issue or pull request. Generated output does not replace implementation verification. If the tool is unavailable or declined, continue with the same brief and the available local design workflow. Creating an exploration does not authorize publishing or sharing it externally.
 
 ## Deliverable
 

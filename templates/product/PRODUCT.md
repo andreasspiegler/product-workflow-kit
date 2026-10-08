@@ -33,7 +33,7 @@ workflow_kit:
 
 ## Environments
 
-<!-- Local, staging, and production setup; where secrets live and who can access them; who may deploy. -->
+<!-- Local, staging, and production setup; where secrets live and who can access them; who may deploy; how deployments exclude internal workflow files (see `AGENTS.md`). -->
 
 ## Optional tools
 

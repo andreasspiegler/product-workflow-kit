@@ -37,6 +37,7 @@ Do not create parallel status files, phase handoffs, or decision logs for the sa
 - Keep changes surgical: every changed line should trace to the current work item. Report unrelated cleanup instead of bundling it.
 - Define how the result will be verified before implementation. For shipped changes, also state the outcome signal and measurement window when relevant.
 - Do not deploy, publish, change production data, or make other external side effects without explicit approval.
+- Workflow files are internal and never ship with the product: `AGENTS.md`, `CLAUDE.md`, `PRODUCT.md`, `DESIGN.md`, `docs/`, and runtime directories such as `.claude/`, `.agents/`, and `.opencode/`. When setting up or changing a deployment, exclude them from the deployed artifact. If the web root is the repository root, also block them at the web server. Check the exclude syntax of the deploy tool rather than assuming glob semantics.
 
 ## Human gates
 

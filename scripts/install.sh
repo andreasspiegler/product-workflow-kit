@@ -243,3 +243,4 @@ if [[ ${#AGENTS[@]} -gt 0 ]]; then
   fi
 fi
 printf 'No global configuration, hooks, plugins, permissions, or connectors were changed.\n'
+printf 'Note: workflow files are internal. Exclude them from your deployment (see AGENTS.md).\n'

@@ -28,6 +28,23 @@ assert_contains() {
   grep -Fq -- "$2" "$1" || fail "expected $1 to contain: $2"
 }
 
+# Every relative Markdown link in installed files must resolve inside the product.
+assert_relative_links_resolve() {
+  local root="$1"
+  local file link target
+  while IFS= read -r -d '' file; do
+    while IFS= read -r link; do
+      link="${link%%#*}"
+      [[ -n "$link" ]] || continue
+      case "$link" in
+        http://*|https://*|mailto:*) continue ;;
+      esac
+      target="$(dirname "$file")/$link"
+      [[ -e "$target" ]] || fail "broken relative link in ${file#"$root"/}: $link"
+    done < <(grep -oE '\]\([^)]+\)' "$file" | sed -E 's/^\]\((.*)\)$/\1/')
+  done < <(find "$root" -type f -name '*.md' -print0)
+}
+
 mkdir -p "$TARGET"
 "$KIT_ROOT/scripts/install.sh" \
   --target "$TARGET" \
@@ -44,6 +61,8 @@ done
 assert_contains "$TARGET/PRODUCT.md" 'version: "smoke-test-version"'
 assert_contains "$TEMP_ROOT/install-output.txt" 'workflow files are internal'
 assert_contains "$TARGET/AGENTS.md" 'Workflow files are internal and never ship with the product'
+assert_relative_links_resolve "$TARGET"
+assert_contains "$TARGET/.claude/skills/feature/README.md" 'github.com/andreasspiegler/product-workflow-kit/blob/'
 
 for runtime_dir in .claude/skills .agents/skills .opencode/skills; do
   for skill in kickoff feature requirements-quality product-design quality-release; do

@@ -210,11 +210,40 @@ sed \
 mv "$product_tmp" "$TARGET/PRODUCT.md"
 trap - EXIT
 
+# Skills link to kit documentation outside their own directory (../../docs,
+# ../../agents). Those files are not installed, so the links point to the kit
+# repository at the installed tag or commit instead.
+kit_repo_url() {
+  local url
+  url="$(git -C "$KIT_ROOT" remote get-url origin 2>/dev/null || true)"
+  case "$url" in
+    git@github.com:*) url="https://github.com/${url#git@github.com:}" ;;
+    https://github.com/*) ;;
+    *) url="https://github.com/andreasspiegler/product-workflow-kit" ;;
+  esac
+  printf '%s' "${url%.git}"
+}
+KIT_LINK_REF="$(git -C "$KIT_ROOT" describe --tags --exact-match 2>/dev/null || git -C "$KIT_ROOT" rev-parse HEAD 2>/dev/null || printf 'main')"
+KIT_BLOB_URL="$(kit_repo_url)/blob/$KIT_LINK_REF"
+escaped_blob_url="$(printf '%s' "$KIT_BLOB_URL" | sed 's/[\\&#]/\\&/g')"
+
+rewrite_kit_links() {
+  local file="$1"
+  local tmp
+  tmp="$(mktemp "$file.XXXXXX")"
+  sed -E "s#\]\(\.\./\.\./([^)]*)\)#](${escaped_blob_url}/\1)#g" "$file" > "$tmp"
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+
 for runtime in "${RUNTIMES[@]}"; do
   skill_dir="$(runtime_skill_dir "$runtime")"
   mkdir -p "$TARGET/$skill_dir"
   for skill in "${SKILLS[@]}"; do
     cp -R "$KIT_ROOT/skills/$skill" "$TARGET/$skill_dir/$skill"
+    while IFS= read -r -d '' markdown_file; do
+      rewrite_kit_links "$markdown_file"
+    done < <(find "$TARGET/$skill_dir/$skill" -type f -name '*.md' -print0)
   done
 done
 

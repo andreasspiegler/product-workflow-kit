@@ -42,6 +42,8 @@ for path in AGENTS.md CLAUDE.md PRODUCT.md DESIGN.md docs/decisions/README.md do
   assert_file "$TARGET/$path"
 done
 assert_contains "$TARGET/PRODUCT.md" 'version: "smoke-test-version"'
+assert_contains "$TEMP_ROOT/install-output.txt" 'workflow files are internal'
+assert_contains "$TARGET/AGENTS.md" 'Workflow files are internal and never ship with the product'
 
 for runtime_dir in .claude/skills .agents/skills .opencode/skills; do
   for skill in kickoff feature requirements-quality product-design quality-release; do

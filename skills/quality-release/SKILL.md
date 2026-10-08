@@ -87,7 +87,8 @@ Before a product first becomes publicly available, confirm proportionately — a
 - the success signal from `PRODUCT.md` can actually be measured;
 - authentication and costly endpoints are rate-limited;
 - the privacy notices, data processing agreements, and deletion paths named in `PRODUCT.md` are in place;
-- backups or data recovery and a rollback path exist.
+- backups or data recovery and a rollback path exist;
+- internal workflow files (`AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, `docs/`, runtime skill directories) are not in the deployed artifact or not reachable, confirmed with a request against the public environment.
 
 Mark an item not applicable only with a reason. This is a one-time readiness check, not a gate for every later release.
 

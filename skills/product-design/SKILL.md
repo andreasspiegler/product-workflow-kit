@@ -77,6 +77,8 @@ These are optional, explicit aids. Do not install them globally or make their us
 | Existing experience may be weak | Audit the journey against usability and accessibility risks. |
 | Repeated UI work | Document only the reusable rules and components in `DESIGN.md`. |
 
+When comparing visual directions, keep the user task, example data, product state, and functionality constant so the named visual axis can be judged. If the decision is instead about different interaction models or journeys, name the flow differences as the object of comparison and keep other conditions comparable. Do not require a fixed number of variants.
+
 Do not turn a ticket into a mandatory wireframe, image-generation, or v0 exercise.
 
 ## Impeccable integration

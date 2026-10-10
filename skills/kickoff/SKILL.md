@@ -58,6 +58,10 @@ Select only the necessary activities. Examples:
 - A new data boundary may need a technical decision, security review, and rollout plan even with little UI work.
 - A straightforward known-pattern build may move directly to an issue, implementation plan, and proportionate verification.
 
+When product uncertainty is material, clarify the observed problem, the user's current alternative, and which claims have evidence versus remain assumptions. Name the assumption that could invalidate the proposed slice and the smallest experiment that would inform whether to proceed, change direction, or stop. Agree on the observable signal and decision before running it; do not invent evidence or a numeric target.
+
+Keep this in the existing product context or work item at the depth the risk needs. Do not require a separate discovery phase, persona document, or validation report for a known-pattern build.
+
 Use specialized agents or skills only for bounded questions that benefit from parallel expertise; see [`agents/README.md`](../../agents/README.md) for which specialist fits which question. The main conversation owns prioritization and cross-cutting decisions.
 
 ## 4. Create an executable first slice

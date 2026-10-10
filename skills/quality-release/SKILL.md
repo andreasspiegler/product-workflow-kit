@@ -37,6 +37,16 @@ Use automated tests where they protect repeatable behavior. Add focused manual c
 
 For nontrivial deterministic logic, leave the smallest runnable proof that would fail if the behavior regressed. Keep that proof proportionate to the risk; it can be a focused test, a reproducible command, or another executable check with a clear expected result.
 
+## AI output quality
+
+For a change that generates, classifies, retrieves, or acts on AI output, verify both the integration and whether the output serves the user's task. A successful API call or well-formed response alone does not establish useful or correct behavior.
+
+Before checking outputs, agree on task-specific criteria and a small set of representative inputs with a traceable source or expected behavior. Include consequential failure cases proportionate to the risk, such as missing or conflicting context, unsupported claims, or unusable output; test unsafe actions or prompt injection when the feature's access makes them relevant. Define the expected fallback, refusal, or human review for those cases.
+
+Record the tested model and configuration when available, input or fixture versions, criteria, observed outputs, failures, and coverage limits. Preserve source material unchanged when the task requires archival fidelity, and check the archive separately from the summary. Repeat important cases when output variability could change the acceptance decision; report the run count and differing outcomes rather than generalizing from one successful answer.
+
+Keep the evidence in the existing issue or pull request. Do not invent a universal quality threshold, require an evaluation platform, or treat a small sample as proof of overall reliability.
+
 ## Fresh evidence before completion
 
 Before stating that work is complete, fixed, passing, or ready to release — and before committing or opening a pull request — identify the check that would support that specific claim and run it fresh. Read its complete result, including failures, warnings, exit status, and coverage limits. A previous run, a clean-looking diff, or an agent report is not evidence for the current state.

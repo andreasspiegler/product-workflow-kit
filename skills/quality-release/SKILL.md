@@ -37,6 +37,14 @@ Use automated tests where they protect repeatable behavior. Add focused manual c
 
 For nontrivial deterministic logic, leave the smallest runnable proof that would fail if the behavior regressed. Keep that proof proportionate to the risk; it can be a focused test, a reproducible command, or another executable check with a clear expected result.
 
+## Optional browser verification
+
+For a web interaction that needs browser evidence, consider [Playwright CLI](https://github.com/microsoft/playwright-cli) when available browser tools do not cover the check or a repeatable browser workflow would reduce meaningful risk. Keep the scope tied to an acceptance criterion; a minor copy change does not automatically need browser automation.
+
+If selected, enable it deliberately for the product, review and pin the CLI and any external skill used, and record their source, version, runtime path, and approval in `PRODUCT.md`. Do not install them through the kit installer. Start with a local or test environment and suitable test data. Record the browser, environment, steps, expected and observed results, and coverage limits in the issue or pull request.
+
+An interactive CLI run is evidence for that run, not a durable regression test. When ongoing regression protection is warranted, add a repeatable executable test with assertions, such as a Playwright Test, and run it independently. Browser checks complement rather than replace appropriate accessibility, device, and human review.
+
 ## AI output quality
 
 For a change that generates, classifies, retrieves, or acts on AI output, verify both the integration and whether the output serves the user's task. A successful API call or well-formed response alone does not establish useful or correct behavior.

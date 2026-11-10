@@ -105,6 +105,23 @@ Choose a different or additional runtime deliberately:
 
 Use `--kit-version <version>` only when installing from a non-Git kit archive or when pinning a specific release value. Then fill the outcome, user, scope, non-goals, constraints, data and privacy, environments, success signal, and optional-tool state in `PRODUCT.md`. Start the first issue only after its acceptance criteria and the selected risk-reduction work are clear.
 
+### Agent isolation
+
+Each product decides how strongly coding agents are isolated while they work on it. The `kickoff` skill asks; `feature` asks once for existing products without a record. `scripts/add-sandbox.sh` installs the chosen level, for new and existing products alike, and `install.sh --sandbox <level>` does the same at install time:
+
+```bash
+./scripts/install.sh --target ../my-product --runtime claude --sandbox agent
+./scripts/add-sandbox.sh --target ../existing-product --level container --stack python --app-port 8000
+```
+
+| Level | Installs |
+| --- | --- |
+| `none` | Nothing; the decision is recorded in `PRODUCT.md`. |
+| `agent` | `.claude/settings.json`: Claude Code sandbox (shell writes only inside the project, no credential stores, no Docker socket, no opt-out) and deny rules for the file tools. |
+| `container` | `agent` plus `.devcontainer/` with a pinned image, an HTTPS allowlist, read-only host-executed files, and a `dev` launcher. Stacks: `python`, `node`, `generic`. |
+
+Both levels cover Claude Code only. Private directories on the machine, such as a notes vault, are added per product during kickoff because they differ between people and devices.
+
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
 
 ### Versioning
@@ -113,7 +130,7 @@ Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking ch
 
 ## Maintainer checks
 
-Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, and checks that a Codex-only install gets no `CLAUDE.md`:
+Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, checks that a Codex-only install gets no `CLAUDE.md`, and renders both agent isolation levels:
 
 ```bash
 ./scripts/test-install.sh
@@ -201,9 +218,10 @@ The links are sources and implementation references, not recommendations to inst
 agents/                 optional specialist role briefs
 docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
-scripts/                installer and installer smoke test
+scripts/                installer, agent isolation installer, and smoke test
 skills/                 canonical v3 workflow skills
 templates/product/      product-local shared context
+templates/sandbox/      agent isolation templates (Claude Code settings, Dev Container)
 ```
 
 ## Principles

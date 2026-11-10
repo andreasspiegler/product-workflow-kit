@@ -25,6 +25,11 @@ Options:
                               has no native subagent directory.
   --kit-version <version>    Record an explicit kit version instead of the
                               auto-detected Git tag (or commit, if untagged).
+  --sandbox <level>          Agent isolation: none, agent, or container. Without
+                              it, the decision is left to the kickoff skill.
+                              See scripts/add-sandbox.sh --help.
+  --stack <name>             With --sandbox container: python, node, or generic.
+  --app-port <port>          With --sandbox container: local web app port.
   --help                     Show this help.
 
 Examples:
@@ -32,6 +37,7 @@ Examples:
   scripts/install.sh --target ../my-product --runtime codex --runtime opencode
   scripts/install.sh --target ../my-product --runtime claude --skill kickoff --skill feature
   scripts/install.sh --target ../my-product --runtime claude --agent tech-lead --agent product-designer
+  scripts/install.sh --target ../my-product --runtime claude --sandbox agent
 EOF
 }
 
@@ -56,6 +62,8 @@ KIT_VERSION=""
 RUNTIMES=()
 REQUESTED_SKILLS=()
 REQUESTED_AGENTS=()
+SANDBOX=""
+SANDBOX_ARGS=()
 DEFAULT_SKILLS=(kickoff feature requirements-quality product-design quality-release)
 
 while [[ $# -gt 0 ]]; do
@@ -94,6 +102,19 @@ while [[ $# -gt 0 ]]; do
     --kit-version)
       [[ $# -ge 2 ]] || fail "--kit-version requires a value"
       KIT_VERSION="$2"
+      shift 2
+      ;;
+    --sandbox)
+      [[ $# -ge 2 ]] || fail "--sandbox requires a level"
+      case "$2" in
+        none|agent|container) SANDBOX="$2" ;;
+        *) fail "unsupported sandbox level: $2" ;;
+      esac
+      shift 2
+      ;;
+    --stack|--app-port)
+      [[ $# -ge 2 ]] || fail "$1 requires a value"
+      SANDBOX_ARGS+=("$1" "$2")
       shift 2
       ;;
     --help|-h)
@@ -161,6 +182,19 @@ for relative_path in "${CONTEXT_PATHS[@]}"; do
   [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
 done
 
+# Check agent isolation preconditions before writing anything.
+if [[ ${#SANDBOX_ARGS[@]} -gt 0 && "$SANDBOX" != container ]]; then
+  fail "--stack and --app-port require --sandbox container"
+fi
+if [[ "$SANDBOX" == agent || "$SANDBOX" == container ]]; then
+  has_value claude "${RUNTIMES[@]}" || fail "--sandbox $SANDBOX configures Claude Code; add --runtime claude"
+  [[ ! -e "$TARGET/.claude/settings.json" ]] || fail "refusing to overwrite existing .claude/settings.json"
+fi
+if [[ "$SANDBOX" == container ]]; then
+  [[ -d "$TARGET/.git" ]] || fail "--sandbox container needs a Git repository in the target"
+  [[ ! -e "$TARGET/.devcontainer" ]] || fail "refusing to overwrite existing .devcontainer/"
+fi
+
 runtime_skill_dir() {
   case "$1" in
     claude) printf '.claude/skills' ;;
@@ -201,11 +235,19 @@ esac
 yaml_version="$(printf '%s' "$KIT_VERSION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
 escaped_version="$(printf '%s' "$yaml_version" | sed 's/[\\&|]/\\&/g')"
 escaped_date="$(date +%F | sed 's/[&|]/\\&/g')"
+case "$SANDBOX" in
+  "") isolation_text='Not decided yet. The `kickoff` skill asks; install with `scripts/add-sandbox.sh`.' ;;
+  none) isolation_text="Level: none. Decided at install on $(date +%F). Reason: <!-- fill in -->" ;;
+  agent) isolation_text="Level: agent. Installed $(date +%F) by \`scripts/install.sh\`; covers Claude Code only. Reason: <!-- fill in -->" ;;
+  container) isolation_text="Level: container. Installed $(date +%F) by \`scripts/install.sh\`; covers Claude Code only. Reason: <!-- fill in -->" ;;
+esac
+escaped_isolation="$(printf '%s' "$isolation_text" | sed 's/[\\&|]/\\&/g')"
 product_tmp="$(mktemp "$TARGET/.product-workflow-kit.XXXXXX")"
 trap 'rm -f "$product_tmp"' EXIT
 sed \
   -e "s|{{WORKFLOW_KIT_VERSION}}|$escaped_version|g" \
   -e "s|{{DATE}}|$escaped_date|g" \
+  -e "s|{{AGENT_ISOLATION}}|$escaped_isolation|g" \
   "$KIT_ROOT/templates/product/PRODUCT.md" > "$product_tmp"
 mv "$product_tmp" "$TARGET/PRODUCT.md"
 trap - EXIT
@@ -262,6 +304,10 @@ if [[ ${#AGENTS[@]} -gt 0 ]]; then
   done
 fi
 
+if [[ -n "$SANDBOX" && "$SANDBOX" != none ]]; then
+  "$KIT_ROOT/scripts/add-sandbox.sh" --target "$TARGET" --level "$SANDBOX" ${SANDBOX_ARGS[@]+"${SANDBOX_ARGS[@]}"}
+fi
+
 printf 'Installed Product Workflow Kit %s into %s\n' "$KIT_VERSION" "$TARGET"
 printf 'Configured runtimes: %s\n' "${RUNTIMES[*]}"
 printf 'Installed skills: %s\n' "${SKILLS[*]}"
@@ -271,5 +317,6 @@ if [[ ${#AGENTS[@]} -gt 0 ]]; then
     printf 'Skipped agents for runtime(s) without a subagent directory: %s\n' "${SKIPPED_AGENT_RUNTIMES[*]}"
   fi
 fi
+[[ -n "$SANDBOX" ]] || printf 'Agent isolation not decided yet; the kickoff skill asks (scripts/add-sandbox.sh).\n'
 printf 'No global configuration, hooks, plugins, permissions, or connectors were changed.\n'
 printf 'Note: workflow files are internal. Exclude them from your deployment (see AGENTS.md).\n'

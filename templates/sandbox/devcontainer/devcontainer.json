@@ -1,0 +1,37 @@
+{
+  // Agent sandbox for this product. Usage and limits: .devcontainer/README.md
+  "name": "{{PRODUCT_NAME}}",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": { "TZ": "${localEnv:TZ:UTC}" }
+  },
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "--memory=4g",
+    "--cpus=2",
+    "--pids-limit=1024",
+    "--hostname={{PRODUCT_NAME}}-sandbox"
+  ],{{APP_PORT_LINE}}
+  "remoteUser": "dev",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    // Files the host executes or evaluates are read-only inside the sandbox.
+    "source=${localWorkspaceFolder}/.git/config,target=/workspace/.git/config,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.git/hooks,target=/workspace/.git/hooks,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.devcontainer,target=/workspace/.devcontainer,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.claude,target=/workspace/.claude,type=bind,readonly",
+    // Separate Claude Code login and package cache, isolated from the host
+    "source={{PRODUCT_NAME}}-claude-config,target=/home/dev/.claude,type=volume",
+    "source={{PRODUCT_NAME}}-cache,target=/home/dev/.cache,type=volume"{{STACK_MOUNTS}}
+  ],
+  "containerEnv": {
+    "DEVCONTAINER": "true",
+    "CLAUDE_CONFIG_DIR": "/home/dev/.claude",
+    "DISABLE_AUTOUPDATER": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"{{STACK_ENV}}
+  },{{POST_CREATE_LINE}}
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "waitFor": "postStartCommand"
+}

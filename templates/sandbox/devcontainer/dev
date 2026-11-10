@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Run on the host, not inside the container.
+#   .devcontainer/dev            start Claude Code in the sandbox (further arguments go to claude)
+#   .devcontainer/dev shell      shell in the sandbox
+#   .devcontainer/dev run <cmd>  run one command in the sandbox
+#   .devcontainer/dev rebuild    rebuild after changes to .devcontainer/
+#   .devcontainer/dev stop       stop the sandbox
+set -euo pipefail
+cd "$(dirname "$0")/.."
+DC=(npx --yes @devcontainers/cli@{{DEVCONTAINER_CLI_VERSION}})
+
+up() { "${DC[@]}" up --workspace-folder . "$@" >/dev/null; }
+run() { "${DC[@]}" exec --workspace-folder . "$@"; }
+
+cmd=${1:-claude}
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  # The container is the boundary here; Claude Code's own sandbox (project
+  # settings, needed on the host) is switched off for this session only.
+  claude)  up; run claude --settings '{"sandbox":{"enabled":false}}' "$@" ;;
+  shell)   up; run bash -l ;;
+  run)     up; run "$@" ;;
+  up)      up ;;
+  rebuild) up --remove-existing-container ;;
+  stop)    docker ps -q --filter "label=devcontainer.local_folder=$PWD" | xargs -r docker stop ;;
+  *)       sed -n '2,7p' "$0"; exit 1 ;;
+esac

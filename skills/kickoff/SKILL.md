@@ -37,6 +37,20 @@ If `scripts/install.sh` has already created the product-local context, fill it i
 
 Record the workflow kit's Git commit or release tag in `PRODUCT.md`. This pins the kickoff to the kit version actually used; it must not silently follow a newer remote revision.
 
+### Choose agent isolation
+
+Ask once how strongly coding agents should be isolated while they build this product, unless `PRODUCT.md` already records a level. Explain the three levels briefly and recommend one; the user decides.
+
+| Level | What it does | Fits when |
+| --- | --- | --- |
+| `none` | Nothing installed. | The user deliberately accepts the agent's full access, for example a throwaway experiment on a disposable machine. |
+| `agent` | Claude Code sandbox and deny rules in `.claude/settings.json`: shell commands write only inside the project, cannot read common credential stores or reach the Docker socket, and cannot switch the sandbox off. The agent keeps working in its usual runtime. | Default recommendation for small and medium products on a known stack. |
+| `container` | `agent` plus a Dev Container with an HTTPS allowlist; agents started through `.devcontainer/dev` see only the repository. More setup, a separate agent login, and pushes from the host. | Money, production systems, or personal data are within reach; untrusted code or dependencies; unusual system packages or services; long autonomous runs. |
+
+Name the limits honestly: the `agent` level covers Claude Code only, does not enforce its network allowlist when the runtime bypasses permission prompts, and leaves the file-editing tools bound only by the deny rules. Hooks and MCP servers always run outside the sandbox.
+
+Install the chosen level with `scripts/add-sandbox.sh --target <product> --level <level>` from the kit checkout (`install.sh --sandbox` does the same at install time). Then ask which private directories on this machine the agent must never read, such as a notes vault, and add them to `sandbox.filesystem.denyRead` and to `Read(...)`/`Edit(...)` deny rules. Record level, reason, date, covered runtimes, and added directories under "Agent isolation" in `PRODUCT.md`. For `container`, build it once with `.devcontainer/dev up` and confirm the firewall self-test passes before relying on it.
+
 For calibration on depth and tone, read `examples/microsite/` in the workflow kit checkout — a small, filled-in `PRODUCT.md`, `DESIGN.md`, and decision record. Use it as a reference for how much a section needs, not as text to copy.
 
 When GitHub is the chosen tracker, use GitHub Issues as the default work record for status, priorities, requirements, and acceptance criteria. Add a GitHub Project only when the user explicitly asks for a board or roadmap, or when the volume and coordination needs make it materially useful. Do not create a Project merely to satisfy the workflow. Do not use a parallel phase handoff or `STATUS.md`.

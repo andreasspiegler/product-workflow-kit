@@ -35,6 +35,12 @@ workflow_kit:
 
 <!-- Local, staging, and production setup; where secrets live and who can access them; who may deploy; how deployments exclude internal workflow files (see `AGENTS.md`). -->
 
+## Agent isolation
+
+<!-- How strongly coding agents are isolated while working on this product: `none`, `agent` (Claude Code sandbox and deny rules in `.claude/settings.json`), or `container` (Dev Container in `.devcontainer/` plus the agent sandbox). Record the level, the reason, the date, which runtimes it covers, and any private directories added to the deny lists. Weakening it needs explicit approval. -->
+
+{{AGENT_ISOLATION}}
+
 ## Optional tools
 
 <!-- Record only deliberately enabled optional tools. For each: name, source and version or commit, runtime path (or service access point), and approval. For an unversioned service, record the documentation checked and date instead of inventing a version. Write `None enabled.` if there are none. -->

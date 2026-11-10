@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "allowWrite": [
+        "~/.cache/uv",
+        "~/.cache/pip",
+        "~/Library/Caches/pip",
+        "~/.npm",
+        "~/.cache/composer",
+        "~/.cache/ms-playwright",
+        "~/Library/Caches/ms-playwright"
+      ],
+      "denyRead": [
+        "~/.ssh",
+        "~/.gnupg",
+        "~/.aws",
+        "~/.azure",
+        "~/.config/gcloud",
+        "~/.docker",
+        "~/.kube",
+        "~/.netrc",
+        "~/.claude/.credentials.json"
+      ],
+      "denyWrite": [
+        "./.claude",
+        "./.devcontainer",
+        "./.git/hooks",
+        "./.git/config"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "codeload.github.com",
+        "objects.githubusercontent.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "repo.packagist.org"
+      ]
+    }
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.netrc)",
+      "Read(~/.claude/.credentials.json)",
+      "Edit(./.claude/**)",
+      "Edit(./.devcontainer/**)",
+      "Edit(./.git/hooks/**)",
+      "Edit(./.git/config)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.gnupg/**)",
+      "Edit(~/.config/**)",
+      "Edit(~/.claude/**)",
+      "Edit(~/.local/bin/**)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.bash_profile)",
+      "Edit(~/.profile)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.zprofile)",
+      "Edit(~/.gitconfig)"
+    ]
+  }
+}

@@ -22,6 +22,8 @@ Start with targeted local search (for example `rg`) to identify the affected fil
 
 State missing context and do not assume that existing behavior is accidental or wrong.
 
+If `PRODUCT.md` has no "Agent isolation" record, ask once whether the product should get one before implementation starts, using the levels and installation steps in the `kickoff` skill's "Choose agent isolation". Record the answer, including a deliberate `none`, so the question is not repeated.
+
 ## Prefer the smallest correct change
 
 Once the affected flow is understood, choose the first option that fully resolves the need:

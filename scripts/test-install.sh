@@ -89,4 +89,59 @@ mkdir -p "$CODEX_TARGET"
 assert_file "$CODEX_TARGET/AGENTS.md"
 [[ ! -e "$CODEX_TARGET/CLAUDE.md" ]] || fail 'Codex-only install must not create CLAUDE.md'
 
+assert_not_contains() {
+  ! grep -Fq -- "$2" "$1" || fail "expected $1 not to contain: $2"
+}
+
+assert_valid_json() {
+  python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$1" || fail "invalid JSON: $1"
+}
+
+# Without --sandbox the decision is left to kickoff.
+assert_contains "$TARGET/PRODUCT.md" 'Not decided yet'
+assert_not_contains "$TARGET/PRODUCT.md" '{{AGENT_ISOLATION}}'
+[[ ! -e "$TARGET/.claude/settings.json" ]] || fail 'install without --sandbox must not write .claude/settings.json'
+
+# Agent level at install time.
+AGENT_TARGET="$TEMP_ROOT/agent-sandbox"
+mkdir -p "$AGENT_TARGET"
+"$KIT_ROOT/scripts/install.sh" --target "$AGENT_TARGET" --runtime claude --sandbox agent \
+  --kit-version smoke-test-version > /dev/null
+assert_valid_json "$AGENT_TARGET/.claude/settings.json"
+assert_contains "$AGENT_TARGET/.claude/settings.json" '"allowUnsandboxedCommands": false'
+assert_contains "$AGENT_TARGET/PRODUCT.md" 'Level: agent.'
+[[ ! -e "$AGENT_TARGET/.devcontainer" ]] || fail 'agent level must not install a Dev Container'
+if "$KIT_ROOT/scripts/add-sandbox.sh" --target "$AGENT_TARGET" --level agent >/dev/null 2>&1; then
+  fail 'add-sandbox accepted an overwrite of .claude/settings.json'
+fi
+
+# The agent level configures Claude Code and must refuse a Codex-only install.
+CODEX_SANDBOX_TARGET="$TEMP_ROOT/codex-sandbox"
+mkdir -p "$CODEX_SANDBOX_TARGET"
+if "$KIT_ROOT/scripts/install.sh" --target "$CODEX_SANDBOX_TARGET" --runtime codex --sandbox agent \
+  --kit-version smoke-test-version >/dev/null 2>&1; then
+  fail 'install accepted --sandbox agent without the claude runtime'
+fi
+[[ ! -e "$CODEX_SANDBOX_TARGET/AGENTS.md" ]] || fail 'failed sandbox precondition must not leave partial files'
+
+# Container level for an existing Node product.
+CONTAINER_TARGET="$TEMP_ROOT/container-sandbox"
+mkdir -p "$CONTAINER_TARGET/.git"
+printf '{}\n' > "$CONTAINER_TARGET/package.json"
+"$KIT_ROOT/scripts/add-sandbox.sh" --target "$CONTAINER_TARGET" --level container --app-port 4173 > /dev/null
+for path in devcontainer.json Dockerfile init-firewall.sh dev README.md expose.sh; do
+  assert_file "$CONTAINER_TARGET/.devcontainer/$path"
+  assert_not_contains "$CONTAINER_TARGET/.devcontainer/$path" '{{'
+done
+assert_valid_json "$CONTAINER_TARGET/.claude/settings.json"
+assert_contains "$CONTAINER_TARGET/.devcontainer/Dockerfile" 'FROM node:22-bookworm-slim'
+assert_contains "$CONTAINER_TARGET/.devcontainer/devcontainer.json" 'container-sandbox-node-modules'
+assert_contains "$CONTAINER_TARGET/.devcontainer/devcontainer.json" '"127.0.0.1:4173:9999"'
+assert_contains "$CONTAINER_TARGET/.devcontainer/init-firewall.sh" 'registry.npmjs.org'
+[[ -x "$CONTAINER_TARGET/.devcontainer/dev" ]] || fail 'dev launcher must be executable'
+bash -n "$CONTAINER_TARGET/.devcontainer/init-firewall.sh" || fail 'firewall script has a syntax error'
+if "$KIT_ROOT/scripts/add-sandbox.sh" --target "$TEMP_ROOT/agent-sandbox" --level container >/dev/null 2>&1; then
+  fail 'add-sandbox accepted --level container without a Git repository'
+fi
+
 printf 'Installer smoke test passed.\n'

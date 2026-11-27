@@ -6,7 +6,7 @@ V4 adds a second operating mode. Each product chooses at kickoff who resolves th
 
 > V4 is the current state of `main`. It is a major release because the product templates changed structure: `PRODUCT.md` gains an "Operating mode" section, `CODING_STANDARDS.md` is installed, and `AGENTS.md` adds the glossary, coding standards, the three-part test for durable decisions, and the operating-mode rules. Existing products keep working on their pinned version; see [Upgrading to v4](#upgrading-to-v4). V3 removed the legacy V1 commands and hook. Run `git tag -l` for released versions.
 
-**At a glance:** [how the human-led and factory modes work](docs/operating-modes.png), one page in German ([HTML version](docs/operating-modes.html), to open in a browser or share as a file).
+**At a glance:** [how to choose between human-led and factory](https://andreasspiegler.github.io/product-workflow-kit/operating-modes.html), a visual guide in German ([HTML source](docs/operating-modes.html), [PNG overview](docs/operating-modes.png)).
 
 ## The model
 
@@ -134,7 +134,7 @@ Both levels cover Claude Code only. Private directories on the machine, such as 
 
 ### Operating mode
 
-<a href="docs/operating-modes.png"><img src="docs/operating-modes.png" alt="Overview of the human-led and factory operating modes" width="420"></a>
+<a href="docs/operating-modes.png"><img src="docs/operating-modes.png" alt="German workflow diagram showing both operating modes, from a shared brief through human-led or factory work to production release and outcome review by a person" width="720"></a>
 
 Each product also decides who resolves the human gates in day-to-day work. `kickoff` asks; `feature` asks once for existing products without a record.
 

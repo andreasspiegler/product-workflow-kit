@@ -69,13 +69,17 @@ jobs:
         run: |
           merged="$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --limit 1000 --json headRefName \
             --jq '[.[] | select(.headRefName | startswith("factory/issue-"))] | length')"
+          # One retro proposal at a time: an open retro pull request waits for a person first.
+          open_retros="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --label factory:retro --json number --jq 'length')"
           run=false
           if [[ "$FORCE" == true ]]; then
             run=true
+          elif [[ "$open_retros" -gt 0 ]]; then
+            echo "An open factory:retro pull request waits for review; skipping."
           elif [[ "$EVERY" =~ ^[0-9]+$ && "$EVERY" -gt 0 && "$merged" -gt 0 && $((merged % EVERY)) -eq 0 ]]; then
             run=true
           fi
-          echo "Merged factory pull requests: $merged; every: $EVERY; force: ${FORCE:-false}; run: $run"
+          echo "Merged factory pull requests: $merged; every: $EVERY; open retros: $open_retros; force: ${FORCE:-false}; run: $run"
           echo "run=$run" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -130,6 +134,12 @@ jobs:
             gh issue list --repo "$GITHUB_REPOSITORY" --label factory:needs-human --state open --limit 50 --json number,title \
               --jq '.[] | "- #\(.number): \(.title)"'
           } > "$ctx/escalations.md"
+          {
+            echo "# Open retro pull requests (do not propose their changes again)"
+            echo
+            gh pr list --repo "$GITHUB_REPOSITORY" --state open --label factory:retro --limit 20 --json number,title,body \
+              --jq '.[] | "## #\(.number): \(.title)\n\n\(.body)\n"'
+          } > "$ctx/open-retros.md"
           ls -R "$ctx"
 
       - name: Keep the evidence for the retro job
@@ -197,7 +207,7 @@ jobs:
           allowed_bots: github-actions[bot]
           prompt: |
             Use the factory-run skill. Stage: retro.
-            The evidence is in ${{ runner.temp }}/factory-retro: metrics.md, escalations.md, issues/, and pull-requests/.
+            The evidence is in ${{ runner.temp }}/factory-retro: metrics.md, escalations.md, open-retros.md, issues/, and pull-requests/.
             Branch ${{ steps.branch.outputs.name }} is checked out from the default branch.
           claude_args: |
             --permission-mode auto

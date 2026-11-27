@@ -79,7 +79,7 @@ Return `verdict` (`pass` or `fail`), `reason`, and `findings`. Fail on any mater
 
 ## Stage: retro
 
-Follow the `retro` skill without a human: gather nothing yourself; the evidence is in the directory named in the prompt (`metrics.md`, `escalations.md`, `issues/`, `pull-requests/`). The strongest signals are what people did after the factory: their review comments, their changes before a merge, and escalations they answered. Next come factory findings and questions that recur across pull requests, and escalations that turned out unnecessary.
+Follow the `retro` skill without a human: gather nothing yourself; the evidence is in the directory named in the prompt (`metrics.md`, `escalations.md`, `open-retros.md`, `issues/`, `pull-requests/`). Never propose a change that an open retro pull request in `open-retros.md` already proposes; if nothing else meets the evidence bar, return `none`. The strongest signals are what people did after the factory: their review comments, their changes before a merge, and escalations they answered. Next come factory findings and questions that recur across pull requests, and escalations that turned out unnecessary.
 
 Unlike the other stages, the retro may change these files, and only these, on the checked-out branch:
 

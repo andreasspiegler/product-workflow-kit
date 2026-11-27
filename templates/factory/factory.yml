@@ -551,7 +551,10 @@ jobs:
   retro:
     needs: [merge, report]
     if: always() && needs.merge.outputs.outcome == 'merged'
+    # A caller must grant every permission any job of the called workflow requests,
+    # even jobs that do not run (factory-retro.yml's hand-off needs actions: write).
     permissions:
+      actions: write
       contents: write
       issues: read
       pull-requests: write

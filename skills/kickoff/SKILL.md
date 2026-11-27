@@ -51,6 +51,19 @@ Name the limits honestly: the `agent` level covers Claude Code only, does not en
 
 Install the chosen level with `scripts/add-sandbox.sh --target <product> --level <level>` from the kit checkout (`install.sh --sandbox` does the same at install time). Then ask which private directories on this machine the agent must never read, such as a notes vault, and add them to `sandbox.filesystem.denyRead` and to `Read(...)`/`Edit(...)` deny rules. Record level, reason, date, covered runtimes, and added directories under "Agent isolation" in `PRODUCT.md`. For `container`, build it once with `.devcontainer/dev up` and confirm the firewall self-test passes before relying on it.
 
+### Choose the operating mode
+
+Ask once who resolves the human gates in day-to-day work, unless `PRODUCT.md` already records a mode. Explain both briefly and recommend one; the user decides.
+
+| Mode | What it does | Fits when |
+| --- | --- | --- |
+| `human-led` | A person decides at every gate; agents create evidence. | Default. New or uncertain product direction, personal data or money involved, or no automated test suite yet. |
+| `factory` | A GitHub Actions workflow specifies, builds, verifies, independently reviews, and merges issues labelled `factory:ready`, up to an autonomy ceiling, and can deploy to staging. Everything above the ceiling comes back to a person. | The product direction is settled, the stack has a reliable automated test suite, and many small, well-specified changes are expected. |
+
+For `factory`, agree on four values and record them as separate lines under "Operating mode" in `PRODUCT.md`: `mode: factory`; `autonomy_ceiling` (`nano`, `micro`, or `standard`; recommend `micro` to start); `merge` (`auto` or `pr-only`); `deploy` (`staging-auto` or `human`). Production deployment always stays human. Factory mode needs agent isolation at level `agent` or `container` first. Install it with `scripts/add-factory.sh --target <product>` from the kit checkout (`install.sh --mode factory` does the same at install time), then walk the user through the one-time setup in `.factory/README.md`: GitHub App, secret, labels, `.factory/setup.sh` and `.factory/check.sh`, and the staging workflow. Creating labels, secrets, or repository variables are external changes and need approval.
+
+Name the limits honestly: the factory decides only as well as the acceptance criteria and checks allow; its acceptance tests are a protected contract, not a hidden test set; and issue text reaches the agent as input, so use it where only trusted people write issues.
+
 For calibration on depth and tone, read `examples/microsite/` in the workflow kit checkout — a small, filled-in `PRODUCT.md`, `DESIGN.md`, and decision record. Use it as a reference for how much a section needs, not as text to copy.
 
 When GitHub is the chosen tracker, use GitHub Issues as the default work record for status, priorities, requirements, and acceptance criteria. Add a GitHub Project only when the user explicitly asks for a board or roadmap, or when the volume and coordination needs make it materially useful. Do not create a Project merely to satisfy the workflow. Do not use a parallel phase handoff or `STATUS.md`.

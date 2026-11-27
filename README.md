@@ -83,6 +83,7 @@ Human decision gates stay explicit at every step: consequential choices, externa
 | [`quality-release`](skills/quality-release/SKILL.md) | Yes | Proportionate tests, release readiness, rollout risk, and outcome checks. |
 | [`sot-builder`](skills/sot-builder/SKILL.md) | No — select with `--skill` | Guided durable decision and contract records; the name is kept for compatibility. |
 | [`nano-banana`](skills/nano-banana/SKILL.md) | No — select with `--skill` | Optional, authorized visual exploration only. |
+| [`factory-run`](skills/factory-run/SKILL.md) | Only with `--mode factory` | Headless spec, build, and review stages of the factory workflow. |
 
 The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions. See [`agents/README.md`](agents/README.md) for which specialist fits which question, and install one with `--agent <name>` below.
 
@@ -122,6 +123,22 @@ Each product decides how strongly coding agents are isolated while they work on 
 
 Both levels cover Claude Code only. Private directories on the machine, such as a notes vault, are added per product during kickoff because they differ between people and devices.
 
+### Operating mode
+
+Each product also decides who resolves the human gates in day-to-day work. `kickoff` asks; `feature` asks once for existing products without a record.
+
+| Mode | What happens |
+| --- | --- |
+| `human-led` | Default. A person decides at every gate; agents create evidence. |
+| `factory` | Labelling an issue `factory:ready` starts a GitHub Actions workflow: Claude writes protected acceptance tests, implements and opens a pull request, a deterministic stage re-runs every check and rejects changes to protected paths or dependencies, a second Claude pass reviews with a fresh context, and the workflow merges and optionally deploys to staging. Work above the autonomy ceiling, and every gate the factory may not take, comes back labelled `factory:needs-human`. |
+
+```bash
+./scripts/install.sh --target ../my-product --runtime claude --sandbox container --mode factory --stack node
+./scripts/add-factory.sh --target ../existing-product --stack python
+```
+
+`PRODUCT.md` records `mode`, `autonomy_ceiling` (`nano`, `micro`, or `standard`), `merge` (`auto` or `pr-only`), and `deploy` (`staging-auto` or `human`); the workflow reads these values before any agent runs. Production deployment always stays human. Factory mode needs agent isolation at level `agent` or `container` and a one-time manual setup (Claude GitHub App, secret, labels, check scripts, staging workflow) described in [`templates/factory/README.md`](templates/factory/README.md), which is installed as `.factory/README.md`. Interactive sessions follow the human-led rules in both modes.
+
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
 
 ### Versioning
@@ -130,7 +147,7 @@ Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking ch
 
 ## Maintainer checks
 
-Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, checks that a Codex-only install gets no `CLAUDE.md`, and renders both agent isolation levels:
+Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, checks that a Codex-only install gets no `CLAUDE.md`, renders both agent isolation levels, and installs factory mode:
 
 ```bash
 ./scripts/test-install.sh
@@ -218,10 +235,11 @@ The links are sources and implementation references, not recommendations to inst
 agents/                 optional specialist role briefs
 docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
-scripts/                installer, agent isolation installer, and smoke test
+scripts/                installer, agent isolation and factory installers, and smoke test
 skills/                 canonical v3 workflow skills
 templates/product/      product-local shared context
 templates/sandbox/      agent isolation templates (Claude Code settings, Dev Container)
+templates/factory/      factory mode workflow and setup checklist
 ```
 
 ## Principles
@@ -229,6 +247,6 @@ templates/sandbox/      agent isolation templates (Claude Code settings, Dev Con
 - Product outcome before process compliance.
 - One portable core; runtime-specific behavior stays in thin adapters.
 - GitHub Issues track work state when selected; add a Project only for a requested board or a real coordination need. Product files capture only durable context.
-- Tools create evidence, never replace user decisions.
+- Tools create evidence, never replace user decisions — unless a product deliberately chooses factory mode, and then only up to its recorded ceiling.
 - Risk determines depth of work and verification.
 - Deployment needs explicit authorization; a product learns after it ships.

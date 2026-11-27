@@ -24,6 +24,8 @@ Deny agent read access to `.env*` and other secret files through each runtime's 
 
 Agent isolation is a per-product decision recorded in `PRODUCT.md`. `scripts/add-sandbox.sh` installs it for Claude Code (`.claude/settings.json`, optionally `.devcontainer/`). Codex and OpenCode have their own sandbox and permission models; configure them separately and record what is covered.
 
+Factory mode is also a per-product decision recorded in `PRODUCT.md`. `scripts/add-factory.sh` installs it for Claude Code only: a GitHub Actions workflow built on the Claude Code GitHub Action, the `factory-run` skill in `.claude/skills/`, and check scripts in `.factory/`. Codex and OpenCode remain usable for interactive, human-led work in the same product.
+
 ## Runtime-neutral operating model
 
 1. Start from the product context and the current GitHub issue.

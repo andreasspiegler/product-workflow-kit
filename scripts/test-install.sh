@@ -144,4 +144,73 @@ if "$KIT_ROOT/scripts/add-sandbox.sh" --target "$TEMP_ROOT/agent-sandbox" --leve
   fail 'add-sandbox accepted --level container without a Git repository'
 fi
 
+# Without --mode the operating mode is left to kickoff and nothing factory-related is installed.
+assert_not_contains "$TARGET/PRODUCT.md" '{{OPERATING_MODE}}'
+assert_contains "$TARGET/PRODUCT.md" '## Operating mode'
+[[ ! -e "$TARGET/.github" && ! -e "$TARGET/.factory" ]] || fail 'install without --mode must not install factory files'
+
+if "$KIT_ROOT/scripts/install.sh" --target "$TEMP_ROOT/codex-only" --runtime codex --stack node \
+  --kit-version smoke-test-version >/dev/null 2>&1; then
+  fail 'install accepted --stack without --sandbox container or --mode factory'
+fi
+
+# Factory mode at install time for a Node product.
+FACTORY_TARGET="$TEMP_ROOT/factory"
+mkdir -p "$FACTORY_TARGET/.git"
+printf '{}\n' > "$FACTORY_TARGET/package.json"
+printf '{}\n' > "$FACTORY_TARGET/package-lock.json"
+"$KIT_ROOT/scripts/install.sh" --target "$FACTORY_TARGET" --runtime claude --sandbox agent --mode factory \
+  --kit-version smoke-test-version > /dev/null
+for path in .github/workflows/factory.yml .factory/README.md .factory/setup.sh .factory/check.sh .claude/skills/factory-run/SKILL.md; do
+  assert_file "$FACTORY_TARGET/$path"
+done
+[[ -x "$FACTORY_TARGET/.factory/setup.sh" && -x "$FACTORY_TARGET/.factory/check.sh" ]] || fail 'factory scripts must be executable'
+assert_contains "$FACTORY_TARGET/.factory/setup.sh" 'npm ci'
+assert_contains "$FACTORY_TARGET/.factory/check.sh" 'npm test'
+bash -n "$FACTORY_TARGET/.factory/setup.sh" || fail 'setup.sh has a syntax error'
+bash -n "$FACTORY_TARGET/.factory/check.sh" || fail 'check.sh has a syntax error'
+assert_contains "$FACTORY_TARGET/.github/workflows/factory.yml" 'anthropics/claude-code-action@'
+assert_relative_links_resolve "$FACTORY_TARGET"
+
+# The workflow parses these PRODUCT.md values with the same sed expressions.
+read_mode_value() {
+  sed -nE "s/^$1: *([a-z-]+).*/\\1/p" "$FACTORY_TARGET/PRODUCT.md" | head -n1
+}
+[[ "$(read_mode_value mode)" == factory ]] || fail 'workflow cannot read mode from PRODUCT.md'
+[[ "$(read_mode_value autonomy_ceiling)" == micro ]] || fail 'workflow cannot read autonomy_ceiling from PRODUCT.md'
+[[ "$(read_mode_value merge)" == auto ]] || fail 'workflow cannot read merge from PRODUCT.md'
+[[ "$(read_mode_value deploy)" == human ]] || fail 'workflow cannot read deploy from PRODUCT.md'
+for workflow_key in mode autonomy_ceiling merge deploy; do
+  [[ "$(grep -Ec "^$workflow_key:" "$FACTORY_TARGET/PRODUCT.md")" == 1 ]] || fail "PRODUCT.md must contain exactly one $workflow_key line"
+done
+
+if "$KIT_ROOT/scripts/add-factory.sh" --target "$FACTORY_TARGET" >/dev/null 2>&1; then
+  fail 'add-factory accepted an overwrite of existing factory files'
+fi
+
+# Factory mode needs agent isolation and the Claude Code runtime, and fails before writing.
+FACTORY_NO_SANDBOX="$TEMP_ROOT/factory-no-sandbox"
+mkdir -p "$FACTORY_NO_SANDBOX/.git"
+if "$KIT_ROOT/scripts/install.sh" --target "$FACTORY_NO_SANDBOX" --runtime claude --mode factory \
+  --kit-version smoke-test-version >/dev/null 2>&1; then
+  fail 'install accepted --mode factory without agent isolation'
+fi
+[[ ! -e "$FACTORY_NO_SANDBOX/AGENTS.md" ]] || fail 'failed factory precondition must not leave partial files'
+if "$KIT_ROOT/scripts/install.sh" --target "$FACTORY_NO_SANDBOX" --runtime codex --sandbox agent --mode factory \
+  --kit-version smoke-test-version >/dev/null 2>&1; then
+  fail 'install accepted --mode factory without the claude runtime'
+fi
+if "$KIT_ROOT/scripts/add-factory.sh" --target "$FACTORY_NO_SANDBOX" >/dev/null 2>&1; then
+  fail 'add-factory accepted a product without .claude/settings.json'
+fi
+
+# A generic stack gets check scripts that fail until configured.
+GENERIC_TARGET="$TEMP_ROOT/factory-generic"
+mkdir -p "$GENERIC_TARGET/.git"
+"$KIT_ROOT/scripts/add-sandbox.sh" --target "$GENERIC_TARGET" --level agent > /dev/null
+"$KIT_ROOT/scripts/add-factory.sh" --target "$GENERIC_TARGET" > /dev/null
+if "$GENERIC_TARGET/.factory/check.sh" >/dev/null 2>&1; then
+  fail 'unconfigured generic check.sh must fail'
+fi
+
 printf 'Installer smoke test passed.\n'

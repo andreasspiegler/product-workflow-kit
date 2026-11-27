@@ -51,6 +51,8 @@ Use EARS-style wording only when it clarifies conditional behavior:
 - **Optional:** when a feature or condition is enabled, the system must behave this way.
 - **Unwanted:** if an unwanted condition occurs, the system must protect or recover this way.
 
+When the issue is meant for the factory (`mode: factory` in `PRODUCT.md`), every acceptance criterion must be verifiable by an automated test through the product's public surface, because the factory's spec stage turns each one into a protected acceptance test and escalates any it cannot. Name the inputs, the observable result, and the relevant failure behavior; move criteria that need human judgment, such as visual quality, into a separate human-led issue.
+
 Use Given/When/Then scenarios only for behavior where an example makes the criterion more testable. Cover both a representative success path and a material failure or edge path when that risk exists. Do not manufacture a fixed number of scenarios.
 
 ## Finish the requirement work

@@ -44,6 +44,10 @@ Do not create parallel status files, phase handoffs, or decision logs for the sa
 
 Ask for a decision before committing to a new product direction, a consequential visual direction, an irreversible technical choice, a production release, or a material scope expansion. Summarize options, evidence, risks, and the recommended next step.
 
+## Operating mode
+
+`PRODUCT.md` records who resolves these gates in day-to-day work. In `human-led` mode, every gate waits for a person. In `factory` mode, the factory workflow (`.github/workflows/factory.yml` with the `factory-run` skill) resolves them for issues labelled `factory:ready` at or below the recorded autonomy ceiling: it may merge and, with `deploy: staging-auto`, deploy to staging. It never sets product direction, raises its own ceiling, changes protected paths, adds dependencies, or deploys to production; those, and everything above the ceiling, come back to a person labelled `factory:needs-human`. Interactive sessions follow the human-led rules in both modes.
+
 ## Completion
 
 Before declaring work complete, link the implementation to its acceptance criteria, run the proportionate checks, record remaining known risks, and update the work item. For a launch, schedule or describe the post-launch outcome check; deployment alone is not product completion.

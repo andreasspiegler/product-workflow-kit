@@ -1,0 +1,383 @@
+# Product Workflow Kit — factory mode.
+#
+# Installed by scripts/add-factory.sh. Labelling an issue `factory:ready` runs
+# five separated stages: spec (acceptance tests) → build (implementation and
+# pull request) → verify (deterministic guards and tests) → review (fresh,
+# independent Claude pass) → merge (deterministic, by policy in PRODUCT.md).
+#
+# This file is a protected path: the factory must never change it, and the
+# verify stage rejects pull requests that do. Change it only by hand.
+# Setup checklist: .factory/README.md.
+
+name: Factory
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-${{ github.event.issue.number }}-${{ github.event.label.name == 'factory:ready' }}
+  cancel-in-progress: false
+
+env:
+  ISSUE: ${{ github.event.issue.number }}
+  BRANCH: factory/issue-${{ github.event.issue.number }}
+  BASE: ${{ github.event.repository.default_branch }}
+
+jobs:
+  spec:
+    if: github.event.label.name == 'factory:ready'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+      id-token: write
+    outputs:
+      proceed: ${{ steps.decide.outputs.proceed }}
+      reason: ${{ steps.decide.outputs.reason }}
+      acceptance_tree: ${{ steps.decide.outputs.acceptance_tree }}
+    steps:
+      - name: Mark the issue as running
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label factory:running --remove-label factory:ready
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Read the operating mode before any agent runs
+        id: policy
+        run: |
+          mode="$(sed -nE 's/^mode: *([a-z-]+).*/\1/p' PRODUCT.md | head -n1)"
+          ceiling="$(sed -nE 's/^autonomy_ceiling: *([a-z]+).*/\1/p' PRODUCT.md | head -n1)"
+          [[ "$mode" == factory ]] || { echo "::error::PRODUCT.md does not set 'mode: factory'"; exit 1; }
+          case "$ceiling" in nano|micro|standard) ;; *) echo "::error::PRODUCT.md needs 'autonomy_ceiling: nano|micro|standard'"; exit 1 ;; esac
+          echo "ceiling=$ceiling" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to reuse an existing factory branch
+        run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            echo "::error::Branch $BRANCH already exists. Close or delete it before labelling the issue again."
+            exit 1
+          fi
+          git switch -c "$BRANCH"
+
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - name: Prepare the toolchain
+        run: .factory/setup.sh
+
+      - name: Write acceptance tests
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Use the factory-run skill. Stage: spec.
+            Issue: #${{ github.event.issue.number }}. Branch ${{ env.BRANCH }} is checked out.
+          claude_args: |
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_SPEC || '40' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --allowedTools "Bash(gh issue view:*),Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD)"
+            --disallowedTools "Bash(gh pr merge:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --json-schema '{"type":"object","properties":{"proceed":{"type":"boolean"},"risk":{"type":"string","enum":["nano","micro","standard","large"]},"reason":{"type":"string"}},"required":["proceed","risk","reason"]}'
+
+      - name: Decide deterministically whether to proceed
+        id: decide
+        env:
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          CEILING: ${{ steps.policy.outputs.ceiling }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          rank() { case "$1" in nano) echo 1 ;; micro) echo 2 ;; standard) echo 3 ;; *) echo 9 ;; esac; }
+          proceed="$(jq -r '.proceed // false' <<<"$result")"
+          risk="$(jq -r '.risk // "large"' <<<"$result")"
+          reason="$(jq -r '.reason // "The spec stage returned no result."' <<<"$result")"
+          if [[ "$proceed" == true && "$(rank "$risk")" -gt "$(rank "$CEILING")" ]]; then
+            proceed=false
+            reason="Risk '$risk' is above the autonomy ceiling '$CEILING'. $reason"
+          fi
+          if [[ "$proceed" == true ]]; then
+            git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+            changed="$(git diff --name-only "origin/$BASE...origin/$BRANCH")"
+            [[ -n "$changed" ]] || { echo "::error::The spec stage pushed no acceptance tests."; exit 1; }
+            if grep -v '^tests/acceptance/' <<<"$changed"; then
+              echo "::error::The spec stage may only add files under tests/acceptance/."; exit 1
+            fi
+            if [[ -n "$(git diff --name-only --diff-filter=MDRT "origin/$BASE...origin/$BRANCH" -- tests/acceptance)" ]]; then
+              echo "::error::The spec stage changed or removed existing acceptance tests."; exit 1
+            fi
+            echo "acceptance_tree=$(git rev-parse "origin/$BRANCH:tests/acceptance")" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$proceed" != true ]]; then
+            # Free the branch so the issue can be labelled again after a human clarified it.
+            git push origin --delete "$BRANCH" 2>/dev/null || true
+          fi
+          delimiter="EOF_$(openssl rand -hex 8)"
+          { echo "proceed=$proceed"; echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: spec
+    if: needs.spec.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+      id-token: write
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+      reason: ${{ steps.pr.outputs.reason }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - name: Prepare the toolchain
+        run: .factory/setup.sh
+
+      - name: Implement and open a pull request
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Use the factory-run skill. Stage: build.
+            Issue: #${{ github.event.issue.number }}. Branch ${{ env.BRANCH }} is checked out and holds the acceptance tests from the spec stage.
+          claude_args: |
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_BUILD || '80' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --allowedTools "Bash(gh issue view:*),Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD),Bash(gh pr create:*)"
+            --disallowedTools "Edit(./tests/acceptance/**),Write(./tests/acceptance/**),Bash(gh pr merge:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["opened","blocked"]},"reason":{"type":"string"}},"required":["status","reason"]}'
+
+      - name: Find the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          reason="$(jq -r '.reason // "The build stage returned no result."' <<<"$result")"
+          delimiter="EOF_$(openssl rand -hex 8)"
+          { echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+          [[ "$(jq -r '.status // "blocked"' <<<"$result")" == opened ]] || { echo "::error::Build blocked: $reason"; exit 1; }
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          [[ -n "$pr" ]] || { echo "::error::No open pull request from $BRANCH."; exit 1; }
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: [spec, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      head: ${{ steps.head.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Record the verified commit
+        id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Acceptance tests are unchanged since the spec stage
+        env:
+          SPEC_TREE: ${{ needs.spec.outputs.acceptance_tree }}
+        run: |
+          [[ "$(git rev-parse HEAD:tests/acceptance)" == "$SPEC_TREE" ]] \
+            || { echo "::error::tests/acceptance/ changed after the spec stage."; exit 1; }
+          [[ -z "$(git diff --name-only --diff-filter=MDRT "origin/$BASE...HEAD" -- tests/acceptance)" ]] \
+            || { echo "::error::Existing acceptance tests were changed or removed."; exit 1; }
+
+      - name: No protected paths or dependency manifests changed
+        env:
+          EXTRA: ${{ vars.FACTORY_PROTECTED_REGEX }}
+        run: |
+          protected='^(\.github/|\.claude/|\.agents/|\.opencode/|\.devcontainer/|\.factory/|docs/decisions/|AGENTS\.md$|CLAUDE\.md$|PRODUCT\.md$|DESIGN\.md$|\.env)'
+          manifests='(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|pyproject\.toml|uv\.lock|poetry\.lock|Pipfile(\.lock)?|requirements[^/]*\.txt|composer\.(json|lock)|Gemfile(\.lock)?|go\.(mod|sum)|Cargo\.(toml|lock))$'
+          changed="$(git diff --name-only "origin/$BASE...HEAD")"
+          hits="$(grep -E "$protected|$manifests${EXTRA:+|$EXTRA}" <<<"$changed" || true)"
+          [[ -z "$hits" ]] || { echo "::error::Changes need a human: $(tr '\n' ' ' <<<"$hits")"; exit 1; }
+
+      - name: Run all checks fresh
+        run: |
+          .factory/setup.sh
+          .factory/check.sh
+
+  review:
+    needs: [spec, build, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: write
+      id-token: write
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+      reason: ${{ steps.verdict.outputs.reason }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - name: Review independently
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Use the factory-run skill. Stage: review.
+            Pull request: #${{ needs.build.outputs.pr }} for issue #${{ github.event.issue.number }}.
+          claude_args: |
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_REVIEW || '40' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --allowedTools "Bash(gh issue view:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
+            --disallowedTools "Edit,Write,NotebookEdit,Bash(git commit:*),Bash(git push:*),Bash(gh pr merge:*),Bash(gh pr review:*)"
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]},"reason":{"type":"string"}},"required":["verdict","reason"]}'
+
+      - name: Read the verdict
+        id: verdict
+        env:
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          verdict="$(jq -r '.verdict // "fail"' <<<"$result")"
+          reason="$(jq -r '.reason // "The review stage returned no result."' <<<"$result")"
+          delimiter="EOF_$(openssl rand -hex 8)"
+          { echo "verdict=$verdict"; echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+
+  merge:
+    needs: [spec, build, verify, review]
+    if: needs.review.outputs.verdict == 'pass'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    outputs:
+      outcome: ${{ steps.merge.outputs.outcome }}
+      note: ${{ steps.merge.outputs.note }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Merge and deploy to staging by policy
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.build.outputs.pr }}
+          HEAD_SHA: ${{ needs.verify.outputs.head }}
+          STAGING_WORKFLOW: ${{ vars.FACTORY_STAGING_WORKFLOW }}
+        run: |
+          merge="$(sed -nE 's/^merge: *([a-z-]+).*/\1/p' PRODUCT.md | head -n1)"
+          deploy="$(sed -nE 's/^deploy: *([a-z-]+).*/\1/p' PRODUCT.md | head -n1)"
+          if [[ "$merge" != auto ]]; then
+            echo "outcome=human-review" >> "$GITHUB_OUTPUT"
+            echo "note=Verified and reviewed; PRODUCT.md asks for a human merge." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Wait for the product's own CI on the pull request, if it has any.
+          sleep 30
+          if ! out="$(gh pr checks "$PR" --repo "$GITHUB_REPOSITORY" --watch --interval 30 2>&1)"; then
+            if grep -qi 'no checks reported' <<<"$out"; then
+              echo "No CI checks on the pull request; relying on the verify stage."
+            else
+              echo "$out"; echo "::error::Pull request checks failed."; exit 1
+            fi
+          fi
+          gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --squash --delete-branch --match-head-commit "$HEAD_SHA"
+          note="Merged."
+          if [[ "$deploy" == staging-auto ]]; then
+            if [[ -n "$STAGING_WORKFLOW" ]]; then
+              gh workflow run "$STAGING_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$BASE"
+              note="Merged; staging deployment ($STAGING_WORKFLOW) started."
+            else
+              note="Merged; no staging deployment started because the FACTORY_STAGING_WORKFLOW variable is not set."
+            fi
+          fi
+          echo "outcome=merged" >> "$GITHUB_OUTPUT"
+          echo "note=$note" >> "$GITHUB_OUTPUT"
+
+  report:
+    needs: [spec, build, verify, review, merge]
+    if: always() && github.event.label.name == 'factory:ready'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Label and comment the outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SPEC_RESULT: ${{ needs.spec.result }}
+          SPEC_PROCEED: ${{ needs.spec.outputs.proceed }}
+          SPEC_REASON: ${{ needs.spec.outputs.reason }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          BUILD_REASON: ${{ needs.build.outputs.reason }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_VERDICT: ${{ needs.review.outputs.verdict }}
+          REVIEW_REASON: ${{ needs.review.outputs.reason }}
+          MERGE_RESULT: ${{ needs.merge.result }}
+          MERGE_OUTCOME: ${{ needs.merge.outputs.outcome }}
+          MERGE_NOTE: ${{ needs.merge.outputs.note }}
+          PR: ${{ needs.build.outputs.pr }}
+        run: |
+          label=factory:needs-human
+          if [[ "$SPEC_RESULT" != success ]]; then
+            body="The spec stage failed before a decision. See the run log."
+          elif [[ "$SPEC_PROCEED" != true ]]; then
+            body="Escalated in the spec stage: $SPEC_REASON"
+          elif [[ "$BUILD_RESULT" != success ]]; then
+            body="The build stage did not open a pull request: ${BUILD_REASON:-see the run log.}"
+          elif [[ "$VERIFY_RESULT" != success ]]; then
+            body="Pull request #$PR failed the deterministic verify stage (protected paths, acceptance tests, or checks). See the run log."
+          elif [[ "$REVIEW_RESULT" != success || "$REVIEW_VERDICT" != pass ]]; then
+            body="The independent review did not pass pull request #$PR: ${REVIEW_REASON:-see the run log.}"
+          elif [[ "$MERGE_RESULT" != success ]]; then
+            body="Pull request #$PR passed review but could not be merged (CI, branch protection, or a newer commit). See the run log."
+          elif [[ "$MERGE_OUTCOME" == human-review ]]; then
+            label=factory:human-review
+            body="Pull request #$PR is verified and reviewed. $MERGE_NOTE"
+          else
+            label=factory:merged
+            body="Pull request #$PR: $MERGE_NOTE"
+          fi
+          gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label factory:running --add-label "$label"
+          printf '**Factory:** %s\n\nRun: %s\n' "$body" "$RUN_URL" | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -

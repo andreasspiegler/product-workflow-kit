@@ -65,6 +65,10 @@ When automated verification is not credible for the risk, record the focused man
 
 For a high-risk change — authentication, payments, personal data, a migration, or a first public launch — verify in a pass separate from the one that built it, for example by delegating to `qa-lead`. That pass reports findings with evidence and does not fix them; after the fix, re-run the affected checks.
 
+## Factory mode
+
+In a product with `mode: factory`, the factory workflow applies this skill without a human: the build stage writes the verification record into the pull request, a deterministic stage re-runs all checks and guards protected paths, and a separate review stage with a fresh context judges the change. These high-risk categories are always escalated by the factory rather than verified by it. The release rules below still hold: the factory may deploy to staging only when `PRODUCT.md` allows it, never to production, and the outcome check after release stays with a person.
+
 ## Motion and 3D verification
 
 When a change introduces or alters motion, verify proportionately that it serves a named user purpose and is appropriate for the action's frequency. Keyboard-initiated and high-frequency actions should stay instant or nearly imperceptible; decorative motion should not distract from functional or information-dense UI.

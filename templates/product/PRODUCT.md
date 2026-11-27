@@ -41,6 +41,12 @@ workflow_kit:
 
 {{AGENT_ISOLATION}}
 
+## Operating mode
+
+<!-- Who resolves the human gates in day-to-day work. `human-led`: a person decides at every gate (default). `factory`: issues labelled `factory:ready` are specified, built, verified, reviewed, and merged by `.github/workflows/factory.yml` without a human, up to `autonomy_ceiling` (`nano`, `micro`, or `standard`); `merge` is `auto` or `pr-only`; `deploy` is `staging-auto` or `human`. Production deployment always stays human. Keep the four keys on their own lines; the factory workflow reads them. Record the reason and date. Changing the mode or raising the ceiling needs explicit approval. -->
+
+{{OPERATING_MODE}}
+
 ## Optional tools
 
 <!-- Record only deliberately enabled optional tools. For each: name, source and version or commit, runtime path (or service access point), and approval. For an unversioned service, record the documentation checked and date instead of inventing a version. Write `None enabled.` if there are none. -->

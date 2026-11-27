@@ -129,4 +129,6 @@ Mark an item not applicable only with a reason. This is a one-time readiness che
 
 Do not treat a merge or deployment as completion. Before release, confirm the target environment, rollback path, monitoring or logs, and required approval. Do not deploy or change production systems without explicit authorization. After a deployment, run a short smoke check of the critical path against the production environment and record the result.
 
+When the work was harder than it should have been, or review kept finding the same kind of problem, offer a retro with the `retro` skill: it improves the checks, standards, and context agents work with, not the product.
+
 For changes with product impact, write the outcome check: signal, baseline if available, measurement window, owner, and the decision that the result will inform (iterate, scale, stop, or investigate).

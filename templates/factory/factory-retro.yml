@@ -1,0 +1,233 @@
+# Product Workflow Kit — factory retro.
+#
+# After every FACTORY_RETRO_EVERY-th merged factory pull request (default 10; 0 turns
+# it off), Claude reads those pull requests, their reviews and findings, and the open
+# escalations, and proposes at most three changes to how agents work on this product
+# as a pull request for a person. A retro pull request is never merged by the factory.
+#
+# Triggers: called by factory.yml after a factory merge; a person merging a factory
+# pull request (handed off through workflow_dispatch); or run by hand with `force`.
+#
+# This file is a protected path: the factory must never change it. Change it only by hand.
+
+name: Factory retro
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Run now, regardless of FACTORY_RETRO_EVERY
+        type: boolean
+        default: false
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+env:
+  BASE: ${{ github.event.repository.default_branch }}
+
+jobs:
+  # A person merged a factory pull request. Hand off to workflow_dispatch so the agent
+  # never runs on a pull_request event with a bot-authored pull request.
+  hand-off:
+    if: >-
+      github.event_name == 'pull_request' && github.event.pull_request.merged &&
+      startsWith(github.event.pull_request.head.ref, 'factory/issue-')
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Start the retro gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run factory-retro.yml --repo "$GITHUB_REPOSITORY" --ref "$BASE"
+
+  gather:
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    concurrency:
+      group: factory-retro
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - name: Decide whether a retro is due
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+          EVERY: ${{ vars.FACTORY_RETRO_EVERY || '10' }}
+        run: |
+          merged="$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --limit 1000 --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("factory/issue-"))] | length')"
+          run=false
+          if [[ "$FORCE" == true ]]; then
+            run=true
+          elif [[ "$EVERY" =~ ^[0-9]+$ && "$EVERY" -gt 0 && "$merged" -gt 0 && $((merged % EVERY)) -eq 0 ]]; then
+            run=true
+          fi
+          echo "Merged factory pull requests: $merged; every: $EVERY; force: ${FORCE:-false}; run: $run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.run == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Gather the trusted evidence
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVERY: ${{ vars.FACTORY_RETRO_EVERY || '10' }}
+        run: |
+          ctx="$RUNNER_TEMP/factory-retro"
+          mkdir -p "$ctx/pull-requests" "$ctx/issues"
+          window="$EVERY"; [[ "$window" =~ ^[1-9][0-9]*$ ]] || window=10
+          trusted='(.author_association | IN("OWNER", "MEMBER", "COLLABORATOR")) or (.user.login == "github-actions[bot]" and ((.body // "") | contains("<!-- factory:")))'
+          {
+            echo "# Factory metrics for the last $window merged factory pull requests"
+            echo
+            echo "| Issue | Pull request | Rounds | Question rounds | Merged by |"
+            echo "| --- | --- | --- | --- | --- |"
+          } > "$ctx/metrics.md"
+          gh pr list --repo "$GITHUB_REPOSITORY" --state merged --limit 1000 --json number,headRefName,mergedAt \
+            --jq "[.[] | select(.headRefName | startswith(\"factory/issue-\"))] | sort_by(.mergedAt) | reverse | .[:$window] | .[] | \"\(.number) \(.headRefName)\"" \
+          | while read -r pr ref; do
+              issue="${ref#factory/issue-}"
+              .factory/context.sh "$issue" "$ctx/issues/$issue"
+              mv "$ctx/issues/$issue/issue.md" "$ctx/issues/$issue.md"; rmdir "$ctx/issues/$issue"
+              pr_json="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")"
+              comments="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$pr/comments" | jq -s 'add // []')"
+              reviews="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$pr/reviews" | jq -s 'add // []')"
+              inline="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$pr/comments" | jq -s 'add // []')"
+              {
+                jq -r '"# Pull request #\(.number): \(.title)\n\nMerged by @\(.merged_by.login // "unknown"), \(.commits) commit(s).\n\n\(.body // "")\n"' <<<"$pr_json"
+                echo "## Comments from people with write access and from the factory"; echo
+                jq -r ".[] | select($trusted) | \"### @\\(.user.login)\n\n\\(.body)\n\"" <<<"$comments"
+                echo "## Reviews from people with write access"; echo
+                jq -r '.[] | select(.author_association | IN("OWNER", "MEMBER", "COLLABORATOR")) | select((.body // "") != "") | "### @\(.user.login) (\(.state))\n\n\(.body)\n"' <<<"$reviews"
+                echo "## Inline review comments from people with write access"; echo
+                jq -r '.[] | select(.author_association | IN("OWNER", "MEMBER", "COLLABORATOR")) | "- `\(.path):\(.line // .original_line // "?")` @\(.user.login): \(.body)"' <<<"$inline"
+              } > "$ctx/pull-requests/$pr.md"
+              issue_comments="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$issue/comments" | jq -s 'add // []')"
+              findings="$(jq '[.[] | select(.user.login == "github-actions[bot]" and ((.body // "") | contains("<!-- factory:findings -->")))] | length' <<<"$issue_comments")"
+              questions="$(jq '[.[] | select(.user.login == "github-actions[bot]" and ((.body // "") | contains("<!-- factory:question -->")))] | length' <<<"$issue_comments")"
+              merged_by="$(jq -r '.merged_by.login // "unknown"' <<<"$pr_json")"
+              echo "| #$issue | #$pr | $((findings + 1)) | $questions | $merged_by |" >> "$ctx/metrics.md"
+            done
+          {
+            echo "# Open escalations"
+            echo
+            gh issue list --repo "$GITHUB_REPOSITORY" --label factory:needs-human --state open --limit 50 --json number,title \
+              --jq '.[] | "- #\(.number): \(.title)"'
+          } > "$ctx/escalations.md"
+          ls -R "$ctx"
+
+      - name: Keep the evidence for the retro job
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: factory-retro-evidence
+          path: ${{ runner.temp }}/factory-retro
+          if-no-files-found: error
+          retention-days: 14
+
+  retro:
+    needs: gather
+    if: needs.gather.outputs.run == 'true'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    concurrency:
+      group: factory-retro-agent
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # Claude pushes with the Claude GitHub App token, so CI runs on the retro pull request.
+          persist-credentials: false
+
+      - name: Fetch the evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: factory-retro-evidence
+          path: ${{ runner.temp }}/factory-retro
+
+      - name: Create the retro branch
+        id: branch
+        run: |
+          branch="factory/retro-$(date -u +%Y%m%d)-${GITHUB_RUN_ID}"
+          git switch -c "$branch"
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04+ runners restrict unprivileged user namespaces through AppArmor; this VM is disposable.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
+      - name: Prepare the toolchain
+        run: .factory/setup.sh
+
+      - name: Run the retro
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A person's merge reaches this job through workflow_dispatch by the factory.
+          allowed_bots: github-actions[bot]
+          prompt: |
+            Use the factory-run skill. Stage: retro.
+            The evidence is in ${{ runner.temp }}/factory-retro: metrics.md, escalations.md, issues/, and pull-requests/.
+            Branch ${{ steps.branch.outputs.name }} is checked out from the default branch.
+          claude_args: |
+            --permission-mode auto
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_RETRO || '60' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --add-dir ${{ runner.temp }}/factory-retro
+            --allowedTools "Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD),Bash(gh pr create:*)"
+            --disallowedTools "Bash(gh issue:*),Bash(gh api:*),Bash(gh pr view:*),Bash(gh pr merge:*),Bash(gh run:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["opened","none"]},"reason":{"type":"string"}},"required":["status","reason"]}'
+
+      - name: Guard and label the retro pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          reason="$(jq -r '.reason // "The retro returned no result."' <<<"$result")"
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [[ -z "$pr" ]]; then
+            printf '### Factory retro\n\nNo pull request: %s\n' "$reason" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # A retro proposes; it never changes the gates, the isolation, or existing contracts.
+          forbidden='^(\.github/|\.factory/|\.devcontainer/|\.claude/settings|PRODUCT\.md$|tests/acceptance/|tests/holdout/|\.env)'
+          hits="$(gh pr diff "$pr" --repo "$GITHUB_REPOSITORY" --name-only | grep -E "$forbidden" || true)"
+          if [[ -n "$hits" ]]; then
+            gh pr close "$pr" --repo "$GITHUB_REPOSITORY" --delete-branch \
+              --comment "<!-- factory:retro --> Closed by the factory: a retro may not change $(tr '\n' ' ' <<<"$hits"). Gates, isolation, and existing contracts are a person's decision; the retro can only propose them in its description."
+            exit 0
+          fi
+          gh pr edit "$pr" --repo "$GITHUB_REPOSITORY" --add-label factory:retro
+          printf '### Factory retro\n\nPull request #%s: %s\n' "$pr" "$reason" >> "$GITHUB_STEP_SUMMARY"

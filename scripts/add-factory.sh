@@ -16,12 +16,14 @@ only project-local files, never overwrites, and changes no remote settings.
 Installs:
   .github/workflows/factory.yml   the factory workflow (Claude Code GitHub Action)
   .github/workflows/factory-round.yml  one build → verify → review round
+  .github/workflows/factory-retro.yml  periodic retro as a pull request for a person
   .factory/setup.sh               toolchain and dependency setup for checks
   .factory/check.sh               all tests, including tests/acceptance/ and the
                                   hidden tests the factory adds under tests/holdout/
   .factory/context.sh             writes the trusted issue context for the agents
   .factory/README.md              one-time setup checklist and limits
   .claude/skills/factory-run/     the headless stage instructions
+  .claude/skills/retro/           the retro skill, if not installed yet
 
 Requires a Git repository and agent isolation at level agent or container
 (.claude/settings.json), because the factory runs Claude Code unattended.
@@ -71,7 +73,7 @@ if [[ -z "$STACK" ]]; then
 fi
 case "$STACK" in python|node|generic) ;; *) fail "unsupported stack: $STACK" ;; esac
 
-for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .factory .claude/skills/factory-run; do
+for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .github/workflows/factory-retro.yml .factory .claude/skills/factory-run; do
   [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
 done
 
@@ -109,6 +111,7 @@ write_script() {
 mkdir -p "$TARGET/.github/workflows" "$TARGET/.factory" "$TARGET/.claude/skills"
 cp "$TEMPLATES/factory.yml" "$TARGET/.github/workflows/factory.yml"
 cp "$TEMPLATES/factory-round.yml" "$TARGET/.github/workflows/factory-round.yml"
+cp "$TEMPLATES/factory-retro.yml" "$TARGET/.github/workflows/factory-retro.yml"
 cp "$TEMPLATES/README.md" "$TARGET/.factory/README.md"
 cp "$TEMPLATES/context.sh" "$TARGET/.factory/context.sh"
 chmod +x "$TARGET/.factory/context.sh"
@@ -119,6 +122,7 @@ write_script "$TARGET/.factory/check.sh" \
   "Runs every test, including tests/acceptance/ and tests/holdout/. Must exit non-zero on any failure." \
   "$CHECK_BODY"
 cp -R "$KIT_ROOT/skills/factory-run" "$TARGET/.claude/skills/factory-run"
+[[ -e "$TARGET/.claude/skills/retro" ]] || cp -R "$KIT_ROOT/skills/retro" "$TARGET/.claude/skills/retro"
 
 printf 'Installed factory mode (%s stack): .github/workflows/factory*.yml, .factory/, .claude/skills/factory-run/\n' "$STACK"
 [[ "$STACK" != generic ]] || printf 'Next: configure .factory/setup.sh and .factory/check.sh; both fail until you do.\n'

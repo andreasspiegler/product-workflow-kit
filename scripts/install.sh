@@ -18,7 +18,7 @@ Required:
 Options:
   --skill <name>             Install one selected skill; repeat to choose several.
                               Defaults to kickoff, feature, requirements-quality,
-                              product-design, and quality-release.
+                              product-design, quality-release, and retro.
   --agent <name>             Install one optional specialist agent brief from
                               agents/; repeat to choose several. None installed
                               by default. Claude Code and OpenCode only — Codex
@@ -73,7 +73,7 @@ SANDBOX_ARGS=()
 MODE=""
 STACK=""
 APP_PORT_GIVEN=false
-DEFAULT_SKILLS=(kickoff feature requirements-quality product-design quality-release)
+DEFAULT_SKILLS=(kickoff feature requirements-quality product-design quality-release retro)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -219,7 +219,7 @@ if [[ "$MODE" == factory ]]; then
   has_value claude "${RUNTIMES[@]}" || fail "--mode factory runs Claude Code; add --runtime claude"
   [[ "$SANDBOX" == agent || "$SANDBOX" == container ]] || fail "--mode factory needs --sandbox agent or container"
   [[ -d "$TARGET/.git" ]] || fail "--mode factory needs a Git repository in the target"
-  for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .factory .claude/skills/factory-run; do
+  for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .github/workflows/factory-retro.yml .factory .claude/skills/factory-run; do
     [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
   done
 fi

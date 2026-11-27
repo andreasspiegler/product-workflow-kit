@@ -6,7 +6,8 @@
 # by policy in PRODUCT.md). A failed verify or review starts the next round on
 # the same pull request, up to 1 + FACTORY_MAX_REWORKS rounds (at most 3), all
 # in this one run. Questions go to the issue as a round with recommendations; an
-# answer from someone with write access restarts the factory.
+# answer from someone with write access restarts the factory. Every
+# FACTORY_RETRO_EVERY-th merge triggers a retro (factory-retro.yml).
 #
 # This file is a protected path: the factory must never change it, and the
 # verify stage rejects pull requests that do. Change it only by hand.
@@ -406,3 +407,16 @@ jobs:
           if [[ "$label" == factory:merged ]]; then
             gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY" --reason completed
           fi
+
+  # Every FACTORY_RETRO_EVERY-th merged factory pull request, propose improvements to how
+  # agents work on this product, as a pull request for a person (factory-retro.yml).
+  retro:
+    needs: [merge, report]
+    if: always() && needs.merge.outputs.outcome == 'merged'
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/factory-retro.yml
+    secrets: inherit

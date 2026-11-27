@@ -33,6 +33,22 @@ Check the issue for:
 
 Turn each material gap into a focused question, a measurable constraint, or an explicit assumption. Ask for a human decision when resolving the gap would materially alter scope, direction, risk, or cost.
 
+## Ask in rounds
+
+When a person must decide, ask in rounds rather than one question at a time. A round holds every open decision whose prerequisites are already settled. Number each question, give your recommended answer with a one-line reason, and word it so that "yes" accepts the recommendation. A question that depends on an answer from the same round waits for the next round. Find facts yourself from the code, the product context, and available tools; only decisions go to the person. Stop when nothing material is silently assumed, and confirm the shared understanding before acting on it.
+
+## Keep the domain language
+
+Read `GLOSSARY.md` in the product root when it exists. When a term in the issue or conversation conflicts with it, or a term is vague or overloaded ("account": customer or user?), say so immediately and propose the canonical term. When a product-specific term is settled, propose adding it to `GLOSSARY.md`, creating the file with its first term:
+
+```markdown
+**Order**:
+A request by a **Customer** to buy one or more products.
+_Avoid_: purchase, transaction
+```
+
+Keep each definition to one or two sentences about what the term is, bold other glossary terms, list rejected synonyms under `_Avoid_`, and leave out general programming concepts and implementation details. Group terms under subheadings only when clusters emerge.
+
 ## Structure only what helps
 
 Draft the result for the active GitHub Issue. Apply it to the issue only with explicit approval. Add or improve, as relevant:
@@ -50,6 +66,8 @@ Use EARS-style wording only when it clarifies conditional behavior:
 - **State-driven:** while a state holds, the system must behave this way.
 - **Optional:** when a feature or condition is enabled, the system must behave this way.
 - **Unwanted:** if an unwanted condition occurs, the system must protect or recover this way.
+
+When the issue is meant for the factory (`mode: factory` in `PRODUCT.md`), every acceptance criterion must be verifiable by an automated test through the product's public surface, because the factory's spec stage turns each one into a protected acceptance test and escalates any it cannot. Name the inputs, the observable result, and the relevant failure behavior; move criteria that need human judgment, such as visual quality, into a separate human-led issue.
 
 Use Given/When/Then scenarios only for behavior where an example makes the criterion more testable. Cover both a representative success path and a material failure or edge path when that risk exists. Do not manufacture a fixed number of scenarios.
 

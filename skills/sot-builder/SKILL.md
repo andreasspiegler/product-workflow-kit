@@ -19,7 +19,7 @@ Create one only if the choice needs to remain discoverable beyond the active iss
 - an API or integration contract;
 - a decision with a review or rollback trigger.
 
-Do not create a record for routine status, temporary handoffs, small implementation notes, or a decision already fully explained in a short pull request.
+Create one only when the decision is hard to reverse, surprising without its context, and the result of a real trade-off (see the product's `docs/decisions/README.md`). Do not create a record for routine status, temporary handoffs, small implementation notes, or a decision already fully explained in a short pull request.
 
 ## Process
 

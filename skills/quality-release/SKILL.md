@@ -65,6 +65,10 @@ When automated verification is not credible for the risk, record the focused man
 
 For a high-risk change — authentication, payments, personal data, a migration, or a first public launch — verify in a pass separate from the one that built it, for example by delegating to `qa-lead`. That pass reports findings with evidence and does not fix them; after the fix, re-run the affected checks.
 
+## Factory mode
+
+In a product with `mode: factory`, the factory workflow applies this skill without a human: the spec stage writes visible acceptance tests and hidden tests the build stage never sees, the build stage writes the verification record with its assumptions and confidence into the pull request, a deterministic stage re-runs all checks including the hidden tests and guards protected paths, and a separate review stage with a fresh context judges the change. Failed verification or review goes back to the build stage for a limited number of rework rounds before a person decides. These high-risk categories are always escalated by the factory rather than verified by it. The release rules below still hold: the factory may deploy to staging only when `PRODUCT.md` allows it, never to production, and the outcome check after release stays with a person.
+
 ## Motion and 3D verification
 
 When a change introduces or alters motion, verify proportionately that it serves a named user purpose and is appropriate for the action's frequency. Keyboard-initiated and high-frequency actions should stay instant or nearly imperceptible; decorative motion should not distract from functional or information-dense UI.
@@ -81,6 +85,15 @@ Only run it when the skill is deliberately installed project-locally from a revi
 
 Treat file-and-line findings as evidence to assess, not an automatic verdict. Existing product patterns, the product language and brand, and applicable accessibility requirements take precedence; Vercel-specific copy and brand preferences are not universal rules. Keep manual browser, assistive-technology, and acceptance checks where they are necessary.
 
+## Review on two axes
+
+Review a change on two separate axes and report them separately, so a pass on one cannot hide a failure on the other:
+
+- **Spec:** does the change do what the issue and its acceptance criteria ask? Name requirements that are missing or partial, behavior nobody asked for, and behavior that looks implemented but wrong; quote the criterion for each.
+- **Standards:** does the change follow `CODING_STANDARDS.md` and the existing conventions? Cite the rule for each violation. Common code smells (unclear names, duplicated logic, speculative generality, scattered edits for one change) are judgement calls, never hard violations, and a documented product rule overrides them. Skip what tooling already enforces.
+
+When the same mechanical problem keeps coming back, propose an automated check (a lint rule, a test, a CI job) rather than another written rule; keep `CODING_STANDARDS.md` for judgement calls. The review stage, not the implementation, is where standards are enforced.
+
 ## Use test-first selectively
 
 Choose a test-first loop when the expected behavior is stable enough to describe before implementation and an executable test would reduce meaningful risk. It is especially useful for business rules, data transformations, authorization, API contracts, bug regressions, state transitions, and other deterministic behavior.
@@ -93,6 +106,8 @@ When test-first is appropriate:
 2. Let the developer, QA lead, or tech lead create a focused failing test that demonstrates the intended behavior and fails for the expected reason.
 3. Implement the smallest change that makes the test pass, then refactor without changing the agreed behavior.
 4. Run the proportionate regression and manual checks that the test cannot replace.
+
+Expected values in a test come from an independent source: the issue's examples, a worked example, or a known-good literal. A test that recomputes the expected value the way the code does is tautological: it passes by construction and protects nothing.
 
 Treat a passing test as evidence, not as proof that the whole product change is ready. Keep the acceptance criteria, test evidence, and remaining limits visible in the issue or pull request.
 

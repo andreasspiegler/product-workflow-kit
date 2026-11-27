@@ -2,9 +2,9 @@
 
 A portable, risk-based workflow kit for building digital products with Claude Code, Codex, or OpenCode.
 
-V3 keeps the shift away from a rigid multi-agent pipeline: one shared product context, selective specialist work, deliberate human decisions, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
+V4 adds a second operating mode. Each product chooses at kickoff who resolves the human gates in day-to-day work: a person (`human-led`, the default) or a GitHub Actions software factory that specifies, builds, verifies, reviews, and merges well-specified issues up to a recorded autonomy ceiling (`factory`). Both modes share one product context, risk triage, selective specialist work, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
 
-> V3 is the current state of `main`; the legacy V1 commands and hook were removed in v3.0.0. Since then the kit has added explicit optional-tool state in `PRODUCT.md`, quality-aid decisions in the work record, a design read and fitting Impeccable offers before UI direction, purposeful motion and complexity checks, an optional web-interface review, root-cause debugging and fresh completion evidence, the surgical-changes rule, an installer smoke test, and explicit data, privacy, environment, misuse, and first-launch readiness checks. Run `git tag -l` for released versions.
+> V4 is the current state of `main`. It is a major release because the product templates changed structure: `PRODUCT.md` gains an "Operating mode" section, `CODING_STANDARDS.md` is installed, and `AGENTS.md` adds the glossary, coding standards, the three-part test for durable decisions, and the operating-mode rules. Existing products keep working on their pinned version; see [Upgrading to v4](#upgrading-to-v4). V3 removed the legacy V1 commands and hook. Run `git tag -l` for released versions.
 
 ## The model
 
@@ -13,10 +13,12 @@ Workflow Kit (versioned Git repository)
         │ explicit local update
         ▼
 Product-local context (pinned kit commit)
-  ├── AGENTS.md       shared working agreement
-  ├── PRODUCT.md      outcome, scope, constraints, data, environments, success signal
-  ├── DESIGN.md       reusable experience and design direction
-  └── docs/decisions/ durable decisions and contracts
+  ├── AGENTS.md            shared working agreement
+  ├── PRODUCT.md           outcome, scope, constraints, data, environments, success signal
+  ├── DESIGN.md            reusable experience and design direction
+  ├── CODING_STANDARDS.md  judgement-call rules a review checks
+  ├── GLOSSARY.md          domain language, created with its first term
+  └── docs/decisions/      durable decisions and contracts
         │
         ▼
 Runtime adapters
@@ -62,15 +64,18 @@ There is no separate specification document. The specification of a slice lives 
 
 Human decision gates stay explicit at every step: consequential choices, external resources, paid tools, and releases wait for approval. [`examples/microsite`](examples/microsite/) shows a filled `PRODUCT.md`, `DESIGN.md`, and one decision record for calibrating depth.
 
-## What V3 establishes
+## What V3 and V4 establish
 
-| Earlier setup | V3 |
+| Earlier setup | Now |
 | --- | --- |
 | Fixed seven-phase pipeline | Risk triage selects only discovery, design, technical, quality, and release work that is useful. |
 | Handoff documents and `STATUS.md` | GitHub Issues track work state; a Project is optional when a board or roadmap adds coordination value. The repository contains only durable product, design, and decision context. |
 | Nano Banana → v0 as the design path | Reference discovery, Claude Design, Impeccable, image generation, and v0 are selected for a concrete purpose. |
 | One Claude Code setup | Portable core plus thin, project-local adapters for Claude Code, Codex, and OpenCode. |
 | Deployment as the finish line | Relevant releases include a post-launch signal and a decision to iterate, scale, stop, or investigate. |
+| Every gate waits for a person | Each product chooses `human-led` or `factory` mode. The factory takes gates only up to its autonomy ceiling, escalates fixed gates with a round of questions, and never deploys to production. (V4) |
+| Questions one at a time, terms used loosely | Questions in rounds with recommended answers; domain language in `GLOSSARY.md`. (V4) |
+| One review pass | Review on separate Spec and Standards axes, with `CODING_STANDARDS.md` read at review time and mechanical rules turned into automated checks. (V4) |
 
 ## Skills
 
@@ -83,6 +88,7 @@ Human decision gates stay explicit at every step: consequential choices, externa
 | [`quality-release`](skills/quality-release/SKILL.md) | Yes | Proportionate tests, release readiness, rollout risk, and outcome checks. |
 | [`sot-builder`](skills/sot-builder/SKILL.md) | No — select with `--skill` | Guided durable decision and contract records; the name is kept for compatibility. |
 | [`nano-banana`](skills/nano-banana/SKILL.md) | No — select with `--skill` | Optional, authorized visual exploration only. |
+| [`factory-run`](skills/factory-run/SKILL.md) | Only with `--mode factory` | Headless spec, build, and review stages of the factory workflow. |
 
 The role briefs in [`agents/`](agents/) are specialist perspectives, not an obligatory relay race. The main conversation owns scope and cross-cutting decisions; delegate only bounded independent questions. See [`agents/README.md`](agents/README.md) for which specialist fits which question, and install one with `--agent <name>` below.
 
@@ -122,15 +128,41 @@ Each product decides how strongly coding agents are isolated while they work on 
 
 Both levels cover Claude Code only. Private directories on the machine, such as a notes vault, are added per product during kickoff because they differ between people and devices.
 
+### Operating mode
+
+Each product also decides who resolves the human gates in day-to-day work. `kickoff` asks; `feature` asks once for existing products without a record.
+
+| Mode | What happens |
+| --- | --- |
+| `human-led` | Default. A person decides at every gate; agents create evidence. |
+| `factory` | Labelling an issue `factory:ready` starts a GitHub Actions workflow: Claude writes visible acceptance tests and hidden tests, implements and opens a pull request without seeing the hidden tests, a deterministic stage re-runs every check including the hidden tests and rejects changes to protected paths or dependencies, a second Claude pass reviews with a fresh context, and the workflow merges and optionally deploys to staging. Failed checks or reviews go back for up to two rework rounds. Work above the autonomy ceiling, and every gate the factory may not take, comes back labelled `factory:needs-human` with a question and options; answering in the issue restarts the factory. Agents only see comments from people with write access. |
+
+```bash
+./scripts/install.sh --target ../my-product --runtime claude --sandbox container --mode factory --stack node
+./scripts/add-factory.sh --target ../existing-product --stack python
+```
+
+`PRODUCT.md` records `mode`, `autonomy_ceiling` (`nano`, `micro`, or `standard`), `merge` (`auto` or `pr-only`), and `deploy` (`staging-auto` or `human`); the workflow reads these values before any agent runs. Production deployment always stays human. Factory mode needs agent isolation at level `agent` or `container` and a one-time manual setup (Claude GitHub App, secret, labels, check scripts, staging workflow) described in [`templates/factory/README.md`](templates/factory/README.md), which is installed as `.factory/README.md`. Interactive sessions follow the human-led rules in both modes.
+
 The product can deliberately upgrade later: review the newer kit version, update the local skill copy or symlink, and record the new version in `PRODUCT.md`.
 
 ### Versioning
 
 Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking change to a skill's contract or a template's structure, MINOR for a new skill or capability, PATCH for fixes and docs. `scripts/install.sh` pins to the nearest tag automatically; run `git tag -l` in the kit checkout to see available versions.
 
+### Upgrading to v4
+
+A product on v3 keeps working until it deliberately upgrades. To upgrade:
+
+1. Review the changes between the product's pinned version and `v4.0.0` in the kit checkout.
+2. Update the product's local skill copies (or symlinks) for the runtimes it uses.
+3. Add the "Operating mode" section from `templates/product/PRODUCT.md` to `PRODUCT.md` and record `mode: human-led`, or install factory mode with `scripts/add-factory.sh` and record its values.
+4. Copy `templates/product/CODING_STANDARDS.md` into the product root, and merge the new `AGENTS.md` lines on the glossary, coding standards, durable decisions, and operating mode into the product's `AGENTS.md`.
+5. Record `v4.0.0` and the date in `PRODUCT.md`.
+
 ## Maintainer checks
 
-Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, checks that a Codex-only install gets no `CLAUDE.md`, and renders both agent isolation levels:
+Run the installer smoke test before tagging a release. It creates a temporary product directory, installs the core skills for Claude Code, Codex, and OpenCode, checks the optional-agent path, confirms overwrite protection, checks that a Codex-only install gets no `CLAUDE.md`, renders both agent isolation levels, and installs factory mode:
 
 ```bash
 ./scripts/test-install.sh
@@ -208,6 +240,8 @@ These sources inform selected decision points in the kit. They are not bundled d
 | [Ponytail](https://github.com/dietrichgebert/ponytail) | Keeping implementation proportionate. | The kit adopts the implementation ladder, root-cause check, executable proof for nontrivial deterministic logic, and explicit upgrade triggers. `ponytail-review` and `ponytail-audit` are optional, project-local review aids — never an always-on plugin or a replacement for product, security, accessibility, or correctness review. |
 | [Vercel Web Interface Guidelines](https://vercel.com/design/guidelines) | Checking implemented web interfaces for concrete interaction, accessibility, responsive, and browser-quality risks. | `web-design-guidelines` is an optional, project-local code audit after implementation and before acceptance or release. It reviews changed UI files, records source/date/scope, and complements rather than replaces manual browser, product, or accessibility review. Vercel-specific copy and brand preferences are not adopted as product rules. |
 | [Playwright CLI](https://github.com/microsoft/playwright-cli) | Checking a focused web interaction in a browser when existing tools do not suffice or repeatable browser work would reduce risk. | `quality-release` treats it as an optional, product-local tool; record the enabled version and approval in `PRODUCT.md`. An interactive run records evidence for that run; durable regression protection requires a repeatable test with assertions. Neither CLI nor external skill is installed by the kit. |
+| [Matt Pocock's skills](https://github.com/mattpocock/skills) | Requirements interviews, domain language, review, and running a factory safely. | The kit adopts questions in rounds with recommended answers, a lazily created `GLOSSARY.md`, the three-part test for durable decisions, review on separate Spec and Standards axes with `CODING_STANDARDS.md` read at review time, the tautological-test check, and "start slow" for factory mode. The skills themselves are not installed. |
+| [Software Factory by AlexPEClub](https://github.com/AlexPEClub/software-factory) | Factory mode. | The kit adopts hidden acceptance tests the build stage never sees, questions with options and a restart on the answer, bounded rework rounds, agents that only see trusted comments, and an explicit assumptions and confidence line in factory pull requests. It keeps GitHub-hosted runners instead of a self-hosted server. |
 | [Karpathy guidelines](https://github.com/multica-ai/andrej-karpathy-skills) | Keeping diffs scoped to the request. | The kit adopts only the surgical-changes rule: no drive-by refactoring or reformatting, report unrelated dead code instead of deleting it, and trace every changed line to the work item. Its other rules are already covered by `requirements-quality` and the implementation ladder; its "fewer lines" heuristic is not adopted because simplicity is not a line-count target. It is not installed as a skill. |
 
 The links are sources and implementation references, not recommendations to install every skill. The product-local kit remains the source of truth for which workflows are available in a product.
@@ -218,10 +252,11 @@ The links are sources and implementation references, not recommendations to inst
 agents/                 optional specialist role briefs
 docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
-scripts/                installer, agent isolation installer, and smoke test
-skills/                 canonical v3 workflow skills
+scripts/                installer, agent isolation and factory installers, and smoke test
+skills/                 canonical workflow skills
 templates/product/      product-local shared context
 templates/sandbox/      agent isolation templates (Claude Code settings, Dev Container)
+templates/factory/      factory mode workflow and setup checklist
 ```
 
 ## Principles
@@ -229,6 +264,6 @@ templates/sandbox/      agent isolation templates (Claude Code settings, Dev Con
 - Product outcome before process compliance.
 - One portable core; runtime-specific behavior stays in thin adapters.
 - GitHub Issues track work state when selected; add a Project only for a requested board or a real coordination need. Product files capture only durable context.
-- Tools create evidence, never replace user decisions.
+- Tools create evidence, never replace user decisions — unless a product deliberately chooses factory mode, and then only up to its recorded ceiling.
 - Risk determines depth of work and verification.
 - Deployment needs explicit authorization; a product learns after it ships.

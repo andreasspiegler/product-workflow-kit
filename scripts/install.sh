@@ -28,7 +28,12 @@ Options:
   --sandbox <level>          Agent isolation: none, agent, or container. Without
                               it, the decision is left to the kickoff skill.
                               See scripts/add-sandbox.sh --help.
-  --stack <name>             With --sandbox container: python, node, or generic.
+  --mode <mode>              Operating mode: human-led or factory. Without it,
+                              the decision is left to the kickoff skill.
+                              factory needs --runtime claude and --sandbox
+                              agent or container. See scripts/add-factory.sh --help.
+  --stack <name>             With --sandbox container or --mode factory:
+                              python, node, or generic.
   --app-port <port>          With --sandbox container: local web app port.
   --help                     Show this help.
 
@@ -38,6 +43,7 @@ Examples:
   scripts/install.sh --target ../my-product --runtime claude --skill kickoff --skill feature
   scripts/install.sh --target ../my-product --runtime claude --agent tech-lead --agent product-designer
   scripts/install.sh --target ../my-product --runtime claude --sandbox agent
+  scripts/install.sh --target ../my-product --runtime claude --sandbox container --mode factory --stack node
 EOF
 }
 
@@ -64,6 +70,9 @@ REQUESTED_SKILLS=()
 REQUESTED_AGENTS=()
 SANDBOX=""
 SANDBOX_ARGS=()
+MODE=""
+STACK=""
+APP_PORT_GIVEN=false
 DEFAULT_SKILLS=(kickoff feature requirements-quality product-design quality-release)
 
 while [[ $# -gt 0 ]]; do
@@ -112,9 +121,23 @@ while [[ $# -gt 0 ]]; do
       esac
       shift 2
       ;;
-    --stack|--app-port)
-      [[ $# -ge 2 ]] || fail "$1 requires a value"
+    --mode)
+      [[ $# -ge 2 ]] || fail "--mode requires a value"
+      case "$2" in
+        human-led|factory) MODE="$2" ;;
+        *) fail "unsupported mode: $2" ;;
+      esac
+      shift 2
+      ;;
+    --stack)
+      [[ $# -ge 2 ]] || fail "--stack requires a value"
+      STACK="$2"
+      shift 2
+      ;;
+    --app-port)
+      [[ $# -ge 2 ]] || fail "--app-port requires a value"
       SANDBOX_ARGS+=("$1" "$2")
+      APP_PORT_GIVEN=true
       shift 2
       ;;
     --help|-h)
@@ -174,7 +197,7 @@ if [[ -z "$KIT_VERSION" ]]; then
 fi
 [[ -n "$KIT_VERSION" ]] || fail "could not determine kit version; pass --kit-version explicitly"
 
-CONTEXT_PATHS=(AGENTS.md PRODUCT.md DESIGN.md docs/decisions)
+CONTEXT_PATHS=(AGENTS.md PRODUCT.md DESIGN.md CODING_STANDARDS.md docs/decisions)
 if has_value claude "${RUNTIMES[@]}"; then
   CONTEXT_PATHS+=(CLAUDE.md)
 fi
@@ -182,9 +205,23 @@ for relative_path in "${CONTEXT_PATHS[@]}"; do
   [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
 done
 
-# Check agent isolation preconditions before writing anything.
-if [[ ${#SANDBOX_ARGS[@]} -gt 0 && "$SANDBOX" != container ]]; then
-  fail "--stack and --app-port require --sandbox container"
+# Check agent isolation and operating mode preconditions before writing anything.
+if [[ "$APP_PORT_GIVEN" == true && "$SANDBOX" != container ]]; then
+  fail "--app-port requires --sandbox container"
+fi
+if [[ -n "$STACK" && "$SANDBOX" != container && "$MODE" != factory ]]; then
+  fail "--stack requires --sandbox container or --mode factory"
+fi
+if [[ -n "$STACK" && "$SANDBOX" == container ]]; then
+  SANDBOX_ARGS+=(--stack "$STACK")
+fi
+if [[ "$MODE" == factory ]]; then
+  has_value claude "${RUNTIMES[@]}" || fail "--mode factory runs Claude Code; add --runtime claude"
+  [[ "$SANDBOX" == agent || "$SANDBOX" == container ]] || fail "--mode factory needs --sandbox agent or container"
+  [[ -d "$TARGET/.git" ]] || fail "--mode factory needs a Git repository in the target"
+  for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .factory .claude/skills/factory-run; do
+    [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
+  done
 fi
 if [[ "$SANDBOX" == agent || "$SANDBOX" == container ]]; then
   has_value claude "${RUNTIMES[@]}" || fail "--sandbox $SANDBOX configures Claude Code; add --runtime claude"
@@ -226,6 +263,7 @@ if has_value claude "${RUNTIMES[@]}"; then
   cp "$KIT_ROOT/templates/product/CLAUDE.md" "$TARGET/CLAUDE.md"
 fi
 cp "$KIT_ROOT/templates/product/DESIGN.md" "$TARGET/DESIGN.md"
+cp "$KIT_ROOT/templates/product/CODING_STANDARDS.md" "$TARGET/CODING_STANDARDS.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/README.md" "$TARGET/docs/decisions/README.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/TEMPLATE.md" "$TARGET/docs/decisions/TEMPLATE.md"
 
@@ -242,13 +280,23 @@ case "$SANDBOX" in
   container) isolation_text="Level: container. Installed $(date +%F) by \`scripts/install.sh\`; covers Claude Code only. Reason: <!-- fill in -->" ;;
 esac
 escaped_isolation="$(printf '%s' "$isolation_text" | sed 's/[\\&|]/\\&/g')"
+case "$MODE" in
+  "") mode_lines=('Not decided yet. The `kickoff` skill asks; install factory mode with `scripts/add-factory.sh`.') ;;
+  human-led) mode_lines=('mode: human-led' '' "Decided at install on $(date +%F). Reason: <!-- fill in -->") ;;
+  factory) mode_lines=('mode: factory' 'autonomy_ceiling: micro' 'merge: pr-only' 'deploy: human' '' "Installed $(date +%F) by \`scripts/install.sh\`. Reason: <!-- fill in -->") ;;
+esac
 product_tmp="$(mktemp "$TARGET/.product-workflow-kit.XXXXXX")"
-trap 'rm -f "$product_tmp"' EXIT
+trap 'rm -f "$product_tmp" "$product_tmp.mode"' EXIT
 sed \
   -e "s|{{WORKFLOW_KIT_VERSION}}|$escaped_version|g" \
   -e "s|{{DATE}}|$escaped_date|g" \
   -e "s|{{AGENT_ISOLATION}}|$escaped_isolation|g" \
   "$KIT_ROOT/templates/product/PRODUCT.md" > "$product_tmp"
+# The operating mode spans several lines that the factory workflow parses, so it
+# replaces its placeholder line as a whole instead of going through sed.
+mode_block="$(printf '%s\n' "${mode_lines[@]}")"
+MODE_BLOCK="$mode_block" awk '$0 == "{{OPERATING_MODE}}" { print ENVIRON["MODE_BLOCK"]; next } { print }' "$product_tmp" > "$product_tmp.mode"
+mv "$product_tmp.mode" "$product_tmp"
 mv "$product_tmp" "$TARGET/PRODUCT.md"
 trap - EXIT
 
@@ -308,6 +356,14 @@ if [[ -n "$SANDBOX" && "$SANDBOX" != none ]]; then
   "$KIT_ROOT/scripts/add-sandbox.sh" --target "$TARGET" --level "$SANDBOX" ${SANDBOX_ARGS[@]+"${SANDBOX_ARGS[@]}"}
 fi
 
+if [[ "$MODE" == factory ]]; then
+  if [[ -n "$STACK" ]]; then
+    "$KIT_ROOT/scripts/add-factory.sh" --target "$TARGET" --stack "$STACK"
+  else
+    "$KIT_ROOT/scripts/add-factory.sh" --target "$TARGET"
+  fi
+fi
+
 printf 'Installed Product Workflow Kit %s into %s\n' "$KIT_VERSION" "$TARGET"
 printf 'Configured runtimes: %s\n' "${RUNTIMES[*]}"
 printf 'Installed skills: %s\n' "${SKILLS[*]}"
@@ -318,5 +374,6 @@ if [[ ${#AGENTS[@]} -gt 0 ]]; then
   fi
 fi
 [[ -n "$SANDBOX" ]] || printf 'Agent isolation not decided yet; the kickoff skill asks (scripts/add-sandbox.sh).\n'
+[[ -n "$MODE" ]] || printf 'Operating mode not decided yet; the kickoff skill asks (scripts/add-factory.sh).\n'
 printf 'No global configuration, hooks, plugins, permissions, or connectors were changed.\n'
 printf 'Note: workflow files are internal. Exclude them from your deployment (see AGENTS.md).\n'

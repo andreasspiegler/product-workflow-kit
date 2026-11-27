@@ -15,7 +15,7 @@ Start from the product and its current codebase, not a generic seven-phase workf
 
 Start with targeted local search (for example `rg`) to identify the affected files, symbols, tests, and existing conventions. Open only the smallest relevant context before expanding the search. Then read, as relevant:
 
-1. `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md`.
+1. `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, and `GLOSSARY.md` when it exists.
 2. The linked GitHub issue or pull request, including acceptance criteria and prior decisions.
 3. Existing code, tests, component patterns, deployment configuration, and affected contracts.
 4. `docs/decisions/` only when a durable decision or contract is involved.
@@ -23,6 +23,8 @@ Start with targeted local search (for example `rg`) to identify the affected fil
 State missing context and do not assume that existing behavior is accidental or wrong.
 
 If `PRODUCT.md` has no "Agent isolation" record, ask once whether the product should get one before implementation starts, using the levels and installation steps in the `kickoff` skill's "Choose agent isolation". Record the answer, including a deliberate `none`, so the question is not repeated.
+
+If `PRODUCT.md` has no "Operating mode" record, ask once in the same way, using the modes in the `kickoff` skill's "Choose the operating mode". An interactive session always follows the human-led gates, even in a factory product. To hand a well-specified issue to the factory instead, make its acceptance criteria verifiable by automated tests and, with approval, label it `factory:ready`; the headless run then uses the `factory-run` skill, not this one.
 
 ## Prefer the smallest correct change
 

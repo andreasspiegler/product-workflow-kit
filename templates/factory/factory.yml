@@ -1,0 +1,408 @@
+# Product Workflow Kit — factory mode.
+#
+# Installed by scripts/add-factory.sh. Labelling an issue `factory:ready` runs
+# separated stages: spec (visible acceptance tests plus hidden holdout tests) →
+# rounds of build → verify → review (factory-round.yml) → merge (deterministic,
+# by policy in PRODUCT.md). A failed verify or review starts the next round on
+# the same pull request, up to 1 + FACTORY_MAX_REWORKS rounds (at most 3), all
+# in this one run. Questions go to the issue as a round with recommendations; an
+# answer from someone with write access restarts the factory.
+#
+# This file is a protected path: the factory must never change it, and the
+# verify stage rejects pull requests that do. Change it only by hand.
+# Setup checklist: .factory/README.md.
+
+name: Factory
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Real factory events get one queue per issue and kind; unrelated events get their own group.
+  group: factory-${{ github.event.issue.number }}-${{ (github.event_name == 'issues' && github.event.label.name == 'factory:ready' && 'start') || (github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'factory:needs-human') && 'answer') || github.run_id }}
+  cancel-in-progress: false
+
+env:
+  ISSUE: ${{ github.event.issue.number }}
+  BRANCH: factory/issue-${{ github.event.issue.number }}
+  BASE: ${{ github.event.repository.default_branch }}
+
+jobs:
+  route:
+    if: >-
+      (github.event_name == 'issues' && github.event.label.name == 'factory:ready') ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+       contains(github.event.issue.labels.*.name, 'factory:needs-human') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+       github.event.comment.user.type != 'Bot')
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - name: Decide the mode and claim the issue
+        id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          case "$EVENT" in
+            issues)
+              mode=start
+              gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label factory:running --remove-label factory:ready
+              ;;
+            issue_comment)
+              last="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" \
+                | jq -rs 'add // [] | map(select(.user.login == "github-actions[bot]" and (.body | contains("<!-- factory:")))) | last | .body // ""')"
+              if [[ "$last" == *"<!-- factory:question -->"* ]]; then
+                mode=answer
+                # An answer restarts the factory from scratch with the answer as binding context.
+                for pr in $(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[].number'); do
+                  gh pr close "$pr" --repo "$GITHUB_REPOSITORY" --comment "Closed: the factory restarts issue #$ISSUE after an answer."
+                done
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$BRANCH" >/dev/null 2>&1 || true
+                gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label factory:running --remove-label factory:needs-human
+              else
+                mode=none
+              fi
+              ;;
+          esac
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+  spec:
+    needs: route
+    if: needs.route.outputs.mode == 'start' || needs.route.outputs.mode == 'answer'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: read
+      id-token: write
+    outputs:
+      proceed: ${{ steps.decide.outputs.proceed }}
+      reason: ${{ steps.decide.outputs.reason }}
+      questions: ${{ steps.decide.outputs.questions }}
+      acceptance_tree: ${{ steps.decide.outputs.acceptance_tree }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # Claude pushes with the Claude GitHub App token; the deterministic steps below
+          # authenticate explicitly with the workflow token where they need it.
+          persist-credentials: false
+
+      - name: Read the operating mode before any agent runs
+        id: policy
+        run: |
+          mode="$(sed -nE 's/^mode: *([a-z-]+).*/\1/p' PRODUCT.md | head -n1)"
+          ceiling="$(sed -nE 's/^autonomy_ceiling: *([a-z]+).*/\1/p' PRODUCT.md | head -n1)"
+          [[ "$mode" == factory ]] || { echo "::error::PRODUCT.md does not set 'mode: factory'"; exit 1; }
+          case "$ceiling" in nano|micro|standard) ;; *) echo "::error::PRODUCT.md needs 'autonomy_ceiling: nano|micro|standard'"; exit 1 ;; esac
+          echo "ceiling=$ceiling" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to reuse an existing factory branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          if git -c "http.https://github.com/.extraheader=$auth" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            echo "::error::Branch $BRANCH already exists. Close or delete it before labelling the issue again."
+            exit 1
+          fi
+          git switch -c "$BRANCH"
+
+      - name: Write the trusted issue context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .factory/context.sh "$ISSUE" "$RUNNER_TEMP/factory-context"
+
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04+ runners restrict unprivileged user namespaces through AppArmor.
+          # The bwrap-userns-restrict profile strips the capabilities that Claude Code's
+          # seccomp helper needs inside bwrap. This VM is disposable, so lift both limits.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
+      - name: Prepare the toolchain
+        run: .factory/setup.sh
+
+      - name: Write visible and hidden acceptance tests
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Use the factory-run skill. Stage: spec.
+            Issue: #${{ env.ISSUE }}. Its trusted context is in ${{ runner.temp }}/factory-context/issue.md.
+            Branch ${{ env.BRANCH }} is checked out.
+          claude_args: |
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_SPEC || '40' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --add-dir ${{ runner.temp }}/factory-context
+            --allowedTools "Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD)"
+            --disallowedTools "Bash(gh:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --json-schema '{"type":"object","properties":{"proceed":{"type":"boolean"},"risk":{"type":"string","enum":["nano","micro","standard","large"]},"reason":{"type":"string"},"questions":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["question","recommendation"]}}},"required":["proceed","risk","reason"]}'
+
+      - name: Decide deterministically whether to proceed
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          CEILING: ${{ steps.policy.outputs.ceiling }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          rank() { case "$1" in nano) echo 1 ;; micro) echo 2 ;; standard) echo 3 ;; *) echo 9 ;; esac; }
+          proceed="$(jq -r '.proceed // false' <<<"$result")"
+          risk="$(jq -r '.risk // "large"' <<<"$result")"
+          reason="$(jq -r '.reason // "The spec stage returned no result."' <<<"$result")"
+          if [[ "$proceed" == true && "$(rank "$risk")" -gt "$(rank "$CEILING")" ]]; then
+            proceed=false
+            reason="Risk '$risk' is above the autonomy ceiling '$CEILING'. $reason"
+          fi
+          if [[ "$proceed" == true ]]; then
+            git -c "http.https://github.com/.extraheader=$auth" fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+            changed="$(git diff --name-only "origin/$BASE...origin/$BRANCH")"
+            [[ -n "$changed" ]] || { echo "::error::The spec stage pushed no acceptance tests."; exit 1; }
+            if grep -v '^tests/acceptance/' <<<"$changed"; then
+              echo "::error::The spec stage may only add files under tests/acceptance/."; exit 1
+            fi
+            if [[ -n "$(git diff --name-only --diff-filter=MDRT "origin/$BASE...origin/$BRANCH" -- tests/acceptance)" ]]; then
+              echo "::error::The spec stage changed or removed existing acceptance tests."; exit 1
+            fi
+            [[ -n "$(find tests/holdout -type f 2>/dev/null)" ]] || { echo "::error::The spec stage wrote no hidden tests under tests/holdout/."; exit 1; }
+            mkdir -p "$RUNNER_TEMP/factory-holdout"
+            cp -R tests/holdout/. "$RUNNER_TEMP/factory-holdout/"
+            rm -rf tests/holdout
+            echo "acceptance_tree=$(git rev-parse "origin/$BRANCH:tests/acceptance")" >> "$GITHUB_OUTPUT"
+          else
+            # Free the branch so the factory can start again after a human answered.
+            git -c "http.https://github.com/.extraheader=$auth" push origin --delete "$BRANCH" 2>/dev/null || true
+          fi
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "proceed=$proceed"
+            echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"
+            echo "questions=$(jq -c '.questions // []' <<<"$result")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Keep the hidden tests out of the build stage
+        if: steps.decide.outputs.proceed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: factory-holdout
+          path: ${{ runner.temp }}/factory-holdout
+          if-no-files-found: error
+          retention-days: 14
+
+  # Each round is build → verify → review in factory-round.yml. Running all rounds in
+  # this one run keeps its human actor, so the Claude GitHub App pushes and CI runs.
+  round-1:
+    needs: spec
+    if: needs.spec.outputs.proceed == 'true'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/factory-round.yml
+    with:
+      round: 1
+      acceptance_tree: ${{ needs.spec.outputs.acceptance_tree }}
+    secrets: inherit
+
+  round-2:
+    needs: [spec, round-1]
+    if: always() && needs.round-1.outputs.fixable == 'true' && fromJSON(vars.FACTORY_MAX_REWORKS || '2') >= 1
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/factory-round.yml
+    with:
+      round: 2
+      acceptance_tree: ${{ needs.spec.outputs.acceptance_tree }}
+    secrets: inherit
+
+  round-3:
+    needs: [spec, round-2]
+    if: always() && needs.round-2.outputs.fixable == 'true' && fromJSON(vars.FACTORY_MAX_REWORKS || '2') >= 2
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/factory-round.yml
+    with:
+      round: 3
+      acceptance_tree: ${{ needs.spec.outputs.acceptance_tree }}
+    secrets: inherit
+
+  merge:
+    needs: [round-1, round-2, round-3]
+    if: >-
+      always() &&
+      (needs.round-1.outputs.passed == 'true' || needs.round-2.outputs.passed == 'true' || needs.round-3.outputs.passed == 'true')
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+      checks: read
+    outputs:
+      outcome: ${{ steps.merge.outputs.outcome }}
+      note: ${{ steps.merge.outputs.note }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Merge and deploy to staging by policy
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.round-1.outputs.pr }}
+          HEAD_SHA: ${{ (needs.round-3.outputs.passed == 'true' && needs.round-3.outputs.head) || (needs.round-2.outputs.passed == 'true' && needs.round-2.outputs.head) || needs.round-1.outputs.head }}
+          REQUIRED_CHECKS: ${{ vars.FACTORY_REQUIRED_CHECKS }}
+          STAGING_WORKFLOW: ${{ vars.FACTORY_STAGING_WORKFLOW }}
+        run: |
+          merge="$(sed -nE 's/^merge: *([a-z-]+).*/\1/p' PRODUCT.md | head -n1)"
+          deploy="$(sed -nE 's/^deploy: *([a-z-]+).*/\1/p' PRODUCT.md | head -n1)"
+          if [[ "$merge" != auto ]]; then
+            echo "outcome=human-review" >> "$GITHUB_OUTPUT"
+            echo "note=Verified and reviewed; PRODUCT.md asks for a human merge." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          note=""
+          if [[ -z "$REQUIRED_CHECKS" ]]; then
+            note="No FACTORY_REQUIRED_CHECKS set, so only the factory's verify stage gated this merge. "
+          else
+            # Wait until every named check run succeeded on exactly the verified commit.
+            IFS=',' read -ra names <<<"$REQUIRED_CHECKS"
+            deadline=$((SECONDS + 1800))
+            while :; do
+              runs="$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?per_page=100" --jq '.check_runs')"
+              waiting=""; failed=""
+              for raw in "${names[@]}"; do
+                name="$(xargs <<<"$raw")"
+                state="$(jq -r --arg n "$name" '[.[] | select(.name == $n)] | sort_by(.started_at) | last
+                  | if . == null then "missing" elif .status != "completed" then "pending" else .conclusion end' <<<"$runs")"
+                case "$state" in
+                  success) ;;
+                  missing|pending) waiting+="$name ($state) " ;;
+                  *) failed+="$name ($state) " ;;
+                esac
+              done
+              [[ -z "$failed" ]] || { echo "::error::Required checks failed on $HEAD_SHA: $failed"; exit 1; }
+              [[ -n "$waiting" ]] || break
+              (( SECONDS < deadline )) || { echo "::error::Required checks did not succeed on $HEAD_SHA in time: $waiting"; exit 1; }
+              echo "Waiting for: $waiting"
+              sleep 30
+            done
+          fi
+          gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --squash --delete-branch --match-head-commit "$HEAD_SHA"
+          note+="Merged."
+          if [[ "$deploy" == staging-auto ]]; then
+            if [[ -n "$STAGING_WORKFLOW" ]]; then
+              gh workflow run "$STAGING_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$BASE"
+              note+=" Staging deployment ($STAGING_WORKFLOW) started."
+            else
+              note+=" No staging deployment started because the FACTORY_STAGING_WORKFLOW variable is not set."
+            fi
+          fi
+          echo "outcome=merged" >> "$GITHUB_OUTPUT"
+          echo "note=$note" >> "$GITHUB_OUTPUT"
+
+  report:
+    needs: [route, spec, round-1, round-2, round-3, merge]
+    if: always() && needs.route.result == 'success' && needs.route.outputs.mode != 'none'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Label, comment, and hand back
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SPEC_RESULT: ${{ needs.spec.result }}
+          SPEC_PROCEED: ${{ needs.spec.outputs.proceed }}
+          SPEC_REASON: ${{ needs.spec.outputs.reason }}
+          SPEC_QUESTIONS: ${{ needs.spec.outputs.questions }}
+          R1: ${{ toJSON(needs.round-1) }}
+          R2: ${{ toJSON(needs.round-2) }}
+          R3: ${{ toJSON(needs.round-3) }}
+          MERGE_RESULT: ${{ needs.merge.result }}
+          MERGE_OUTCOME: ${{ needs.merge.outputs.outcome }}
+          MERGE_NOTE: ${{ needs.merge.outputs.note }}
+        run: |
+          label=factory:needs-human; marker=stopped; body=""; questions="[]"
+          # The last round that ran decides; rounds that were skipped have no outputs.
+          last=""; rounds=0
+          for r in "$R1" "$R2" "$R3"; do
+            [[ "$(jq -r '.result // "skipped"' <<<"$r")" != skipped ]] || continue
+            last="$r"; rounds=$((rounds + 1))
+          done
+          out() { jq -r --arg k "$1" '.outputs[$k] // ""' <<<"$last"; }
+          if [[ "$SPEC_RESULT" != success ]]; then
+            body="The spec stage failed before a decision. See the run log."
+          elif [[ "$SPEC_PROCEED" != true ]]; then
+            body="Stopped in the spec stage: $SPEC_REASON"
+            questions="${SPEC_QUESTIONS:-[]}"
+          elif [[ -z "$last" ]]; then
+            body="No build round ran. See the run log."
+          elif [[ "$(out passed)" != true ]]; then
+            pr="$(out pr)"; stage="$(out stage)"; summary="$(out summary)"
+            if [[ "$stage" == build ]]; then
+              body="The build stage stopped in round $rounds: $summary"
+              questions="$(out questions)"; [[ -n "$questions" ]] || questions="[]"
+            else
+              body="$(printf 'Pull request #%s did not pass after %s round(s) (last stage: %s). It stays open for you to decide. Last findings:\n\n%s' "${pr:-?}" "$rounds" "$stage" "$summary")"
+            fi
+          elif [[ "$MERGE_RESULT" != success ]]; then
+            body="Pull request #$(out pr) passed verify and review in round $rounds but could not be merged (required checks, branch protection, or a newer commit). See the run log."
+          elif [[ "$MERGE_OUTCOME" == human-review ]]; then
+            label=factory:human-review; marker=finished
+            body="Pull request #$(out pr) is verified and reviewed after $rounds round(s). $MERGE_NOTE"
+          else
+            label=factory:merged; marker=finished
+            body="Pull request #$(out pr), after $rounds round(s): $MERGE_NOTE"
+          fi
+
+          if [[ "$(jq 'length' <<<"$questions" 2>/dev/null || echo 0)" -gt 0 ]]; then
+            marker=question
+            asked="$(jq -r 'to_entries | map(.key as $i | .value as $q
+              | "**Q\($i + 1): \($q.question)**\n\n"
+              + (if (($q.options // []) | length) > 0
+                 then ($q.options | to_entries | map("\(.key + 1). \(.value)") | join("\n")) + "\n\n"
+                 else "" end)
+              + "Recommended: \($q.recommendation)") | join("\n\n---\n\n")' <<<"$questions")"
+            body="$(printf '%s\n\n%s\n\nAnswer in a comment on this issue, for example "Q1: 2", or "yes" to accept every recommendation. The factory then starts again and treats your answer as binding.' \
+              "$body" "$asked")"
+          fi
+          gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label factory:running --add-label "$label"
+          printf '<!-- factory:%s -->\n**Factory:** %s\n\nRun: %s\n' "$marker" "$body" "$RUN_URL" | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -
+          # Closing keywords do not fire for merges made with the workflow token.
+          if [[ "$label" == factory:merged ]]; then
+            gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY" --reason completed
+          fi

@@ -2,9 +2,9 @@
 
 A portable, risk-based workflow kit for building digital products with Claude Code, Codex, or OpenCode.
 
-V3 keeps the shift away from a rigid multi-agent pipeline: one shared product context, selective specialist work, deliberate human decisions, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
+V4 adds a second operating mode. Each product chooses at kickoff who resolves the human gates in day-to-day work: a person (`human-led`, the default) or a GitHub Actions software factory that specifies, builds, verifies, reviews, and merges well-specified issues up to a recorded autonomy ceiling (`factory`). Both modes share one product context, risk triage, selective specialist work, and outcome learning after launch. GitHub Issues remain the default work record when GitHub is chosen.
 
-> V3 is the current state of `main`; the legacy V1 commands and hook were removed in v3.0.0. Since then the kit has added explicit optional-tool state in `PRODUCT.md`, quality-aid decisions in the work record, a design read and fitting Impeccable offers before UI direction, purposeful motion and complexity checks, an optional web-interface review, root-cause debugging and fresh completion evidence, the surgical-changes rule, an installer smoke test, and explicit data, privacy, environment, misuse, and first-launch readiness checks. Run `git tag -l` for released versions.
+> V4 is the current state of `main`. It is a major release because the product templates changed structure: `PRODUCT.md` gains an "Operating mode" section, `CODING_STANDARDS.md` is installed, and `AGENTS.md` adds the glossary, coding standards, the three-part test for durable decisions, and the operating-mode rules. Existing products keep working on their pinned version; see [Upgrading to v4](#upgrading-to-v4). V3 removed the legacy V1 commands and hook. Run `git tag -l` for released versions.
 
 ## The model
 
@@ -64,15 +64,18 @@ There is no separate specification document. The specification of a slice lives 
 
 Human decision gates stay explicit at every step: consequential choices, external resources, paid tools, and releases wait for approval. [`examples/microsite`](examples/microsite/) shows a filled `PRODUCT.md`, `DESIGN.md`, and one decision record for calibrating depth.
 
-## What V3 establishes
+## What V3 and V4 establish
 
-| Earlier setup | V3 |
+| Earlier setup | Now |
 | --- | --- |
 | Fixed seven-phase pipeline | Risk triage selects only discovery, design, technical, quality, and release work that is useful. |
 | Handoff documents and `STATUS.md` | GitHub Issues track work state; a Project is optional when a board or roadmap adds coordination value. The repository contains only durable product, design, and decision context. |
 | Nano Banana → v0 as the design path | Reference discovery, Claude Design, Impeccable, image generation, and v0 are selected for a concrete purpose. |
 | One Claude Code setup | Portable core plus thin, project-local adapters for Claude Code, Codex, and OpenCode. |
 | Deployment as the finish line | Relevant releases include a post-launch signal and a decision to iterate, scale, stop, or investigate. |
+| Every gate waits for a person | Each product chooses `human-led` or `factory` mode. The factory takes gates only up to its autonomy ceiling, escalates fixed gates with a round of questions, and never deploys to production. (V4) |
+| Questions one at a time, terms used loosely | Questions in rounds with recommended answers; domain language in `GLOSSARY.md`. (V4) |
+| One review pass | Review on separate Spec and Standards axes, with `CODING_STANDARDS.md` read at review time and mechanical rules turned into automated checks. (V4) |
 
 ## Skills
 
@@ -146,6 +149,16 @@ The product can deliberately upgrade later: review the newer kit version, update
 ### Versioning
 
 Releases are tagged `vMAJOR.MINOR.PATCH` on `main`. Bump MAJOR for a breaking change to a skill's contract or a template's structure, MINOR for a new skill or capability, PATCH for fixes and docs. `scripts/install.sh` pins to the nearest tag automatically; run `git tag -l` in the kit checkout to see available versions.
+
+### Upgrading to v4
+
+A product on v3 keeps working until it deliberately upgrades. To upgrade:
+
+1. Review the changes between the product's pinned version and `v4.0.0` in the kit checkout.
+2. Update the product's local skill copies (or symlinks) for the runtimes it uses.
+3. Add the "Operating mode" section from `templates/product/PRODUCT.md` to `PRODUCT.md` and record `mode: human-led`, or install factory mode with `scripts/add-factory.sh` and record its values.
+4. Copy `templates/product/CODING_STANDARDS.md` into the product root, and merge the new `AGENTS.md` lines on the glossary, coding standards, durable decisions, and operating mode into the product's `AGENTS.md`.
+5. Record `v4.0.0` and the date in `PRODUCT.md`.
 
 ## Maintainer checks
 
@@ -240,7 +253,7 @@ agents/                 optional specialist role briefs
 docs/                   adapter guide
 examples/               worked example for calibrating PRODUCT.md/DESIGN.md depth
 scripts/                installer, agent isolation and factory installers, and smoke test
-skills/                 canonical v3 workflow skills
+skills/                 canonical workflow skills
 templates/product/      product-local shared context
 templates/sandbox/      agent isolation templates (Claude Code settings, Dev Container)
 templates/factory/      factory mode workflow and setup checklist

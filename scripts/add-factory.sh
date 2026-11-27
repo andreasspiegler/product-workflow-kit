@@ -15,6 +15,7 @@ only project-local files, never overwrites, and changes no remote settings.
 
 Installs:
   .github/workflows/factory.yml   the factory workflow (Claude Code GitHub Action)
+  .github/workflows/factory-round.yml  one build → verify → review round
   .factory/setup.sh               toolchain and dependency setup for checks
   .factory/check.sh               all tests, including tests/acceptance/ and the
                                   hidden tests the factory adds under tests/holdout/
@@ -70,7 +71,7 @@ if [[ -z "$STACK" ]]; then
 fi
 case "$STACK" in python|node|generic) ;; *) fail "unsupported stack: $STACK" ;; esac
 
-for relative_path in .github/workflows/factory.yml .factory .claude/skills/factory-run; do
+for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .factory .claude/skills/factory-run; do
   [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
 done
 
@@ -107,6 +108,7 @@ write_script() {
 
 mkdir -p "$TARGET/.github/workflows" "$TARGET/.factory" "$TARGET/.claude/skills"
 cp "$TEMPLATES/factory.yml" "$TARGET/.github/workflows/factory.yml"
+cp "$TEMPLATES/factory-round.yml" "$TARGET/.github/workflows/factory-round.yml"
 cp "$TEMPLATES/README.md" "$TARGET/.factory/README.md"
 cp "$TEMPLATES/context.sh" "$TARGET/.factory/context.sh"
 chmod +x "$TARGET/.factory/context.sh"
@@ -118,7 +120,7 @@ write_script "$TARGET/.factory/check.sh" \
   "$CHECK_BODY"
 cp -R "$KIT_ROOT/skills/factory-run" "$TARGET/.claude/skills/factory-run"
 
-printf 'Installed factory mode (%s stack): .github/workflows/factory.yml, .factory/, .claude/skills/factory-run/\n' "$STACK"
+printf 'Installed factory mode (%s stack): .github/workflows/factory*.yml, .factory/, .claude/skills/factory-run/\n' "$STACK"
 [[ "$STACK" != generic ]] || printf 'Next: configure .factory/setup.sh and .factory/check.sh; both fail until you do.\n'
 printf 'Next: complete the one-time setup in .factory/README.md (GitHub App, secret, labels, staging).\n'
 printf 'Record under "Operating mode" in PRODUCT.md (start slow: pr-only until the factory earns trust):\n\n'

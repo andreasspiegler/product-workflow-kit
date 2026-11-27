@@ -8,13 +8,15 @@ Installed by `scripts/add-factory.sh` from the Product Workflow Kit. Everything 
 
 | Stage | Who | What | Protection |
 | --- | --- | --- | --- |
-| route | Workflow | Starts on `factory:ready`, on an answer to a factory question, or on a rework round the factory dispatched itself. | Answers count only from people with write access. |
+| route | Workflow | Starts on `factory:ready` or on an answer to a factory question. | Answers count only from people with write access. |
 | spec | Claude | Triage against the ceiling; write visible acceptance tests under `tests/acceptance/` and hidden tests under `tests/holdout/`; or stop with a question and options. | The workflow reads the ceiling before Claude runs; only new files under `tests/acceptance/` may be pushed; hidden tests leave the run only as an artifact. |
 | build | Claude | Implement the smallest correct change; open or, in a rework round, update the pull request with a verification record, assumptions, and a confidence line. | Never sees the hidden tests; cannot edit `tests/acceptance/`, read issues or comments directly, merge, or force-push. |
 | verify | Workflow | Acceptance tests unchanged since spec; no protected paths or dependency manifests changed; `.factory/setup.sh` and `.factory/check.sh` pass fresh, first without and then with the hidden tests. | Deterministic; read-only token; no secrets. |
 | review | Claude, fresh context | Independent review on two axes, Spec (against the issue and both test sets) and Standards (against `CODING_STANDARDS.md` and the glossary); findings go to the pull request. | No shell, no edits, no GitHub access. |
-| merge | Workflow | Waits for the product's own CI, squash-merges exactly the verified commit, and starts the staging deployment by policy. | Deterministic; `--match-head-commit`. |
-| report | Workflow | Labels and comments the outcome. A failed verify or review starts a rework round (up to `FACTORY_MAX_REWORKS`, default 2) before the issue comes back to you. | Deterministic. |
+| merge | Workflow | Waits until every check named in `FACTORY_REQUIRED_CHECKS` succeeded on the verified commit, squash-merges exactly that commit, and starts the staging deployment by policy. | Deterministic; `--match-head-commit`; a missing required check blocks the merge. |
+| report | Workflow | Labels and comments the outcome. | Deterministic. |
+
+Build, verify, and review run as a round in `factory-round.yml`. A failed verify or review starts the next round on the same pull request with the findings, up to `1 + FACTORY_MAX_REWORKS` rounds (default 2 reworks, at most 3 rounds), all in one workflow run. That keeps the person who started the run as its actor, so the Claude GitHub App pushes every commit and your CI runs on each of them.
 
 Every agent reads the issue through `.factory/context.sh`: the issue, comments from people with write access, and the factory's own comments. Other comments are left out.
 
@@ -37,9 +39,10 @@ Do these by hand; the kit never changes remote configuration.
    gh label create factory:merged --color 5319E7 --description "Merged by the factory"
    ```
 4. **Checks.** Make `.factory/setup.sh` install the toolchain and dependencies, and `.factory/check.sh` run every test including `tests/acceptance/` and `tests/holdout/`, which the factory adds only during verification. Both must exit non-zero on failure.
-5. **Staging (optional).** For `deploy: staging-auto`, give your staging deployment workflow a `workflow_dispatch` trigger and set the repository variable `FACTORY_STAGING_WORKFLOW` to its file name, for example `deploy-staging.yml`. A merge made with the workflow token does not trigger `push` workflows, so the factory starts it explicitly.
-6. **Production.** Keep production behind a GitHub Environment with required reviewers. The factory never deploys to production.
-7. **Branch protection (recommended).** Require your CI checks on the default branch. Do not require a human approval if `merge: auto` should work; use `merge: pr-only` instead.
+5. **Required checks.** Set the repository variable `FACTORY_REQUIRED_CHECKS` to the names of your CI check runs, comma-separated (for example `test` or `lint,test`). The merge waits until each one succeeded on exactly the verified commit and refuses to merge if one fails or never appears. Without it, only the factory's own verify stage gates a merge, and the merge comment says so.
+6. **Staging (optional).** For `deploy: staging-auto`, give your staging deployment workflow a `workflow_dispatch` trigger and set the repository variable `FACTORY_STAGING_WORKFLOW` to its file name, for example `deploy-staging.yml`. A merge made with the workflow token does not trigger `push` workflows, so the factory starts it explicitly.
+7. **Production.** Keep production behind a GitHub Environment with required reviewers. The factory never deploys to production.
+8. **Branch protection (recommended).** Require your CI checks on the default branch. Do not require a human approval if `merge: auto` should work; use `merge: pr-only` instead.
 
 Optional repository variables: `FACTORY_MAX_REWORKS` (default 2), `FACTORY_RUNNER` (default `ubuntu-latest`; a self-hosted runner must be ephemeral, hold no personal data, and provide `sudo`, `bubblewrap`, and `socat`), `FACTORY_MODEL`, `FACTORY_MAX_TURNS_SPEC` (default 40), `FACTORY_MAX_TURNS_BUILD` (80), `FACTORY_MAX_TURNS_REVIEW` (40), and `FACTORY_PROTECTED_REGEX` for additional protected paths as an extended regular expression.
 

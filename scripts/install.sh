@@ -219,7 +219,7 @@ if [[ "$MODE" == factory ]]; then
   has_value claude "${RUNTIMES[@]}" || fail "--mode factory runs Claude Code; add --runtime claude"
   [[ "$SANDBOX" == agent || "$SANDBOX" == container ]] || fail "--mode factory needs --sandbox agent or container"
   [[ -d "$TARGET/.git" ]] || fail "--mode factory needs a Git repository in the target"
-  for relative_path in .github/workflows/factory.yml .factory .claude/skills/factory-run; do
+  for relative_path in .github/workflows/factory.yml .github/workflows/factory-round.yml .factory .claude/skills/factory-run; do
     [[ ! -e "$TARGET/$relative_path" ]] || fail "refusing to overwrite existing $relative_path"
   done
 fi

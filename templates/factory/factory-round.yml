@@ -1,0 +1,364 @@
+# Product Workflow Kit — one factory round: build → verify → review.
+#
+# Called by factory.yml up to three times in the same workflow run, so every
+# round keeps the person who started the run as its actor: the Claude GitHub
+# App pushes, and the product's CI runs on every new commit.
+#
+# This file is a protected path: the factory must never change it, and the
+# verify stage rejects pull requests that do. Change it only by hand.
+
+name: Factory round
+
+on:
+  workflow_call:
+    inputs:
+      round:
+        description: Round number, starting at 1
+        required: true
+        type: number
+      acceptance_tree:
+        description: Git tree of tests/acceptance after the spec stage
+        required: true
+        type: string
+    outputs:
+      pr:
+        value: ${{ jobs.outcome.outputs.pr }}
+      head:
+        value: ${{ jobs.outcome.outputs.head }}
+      passed:
+        value: ${{ jobs.outcome.outputs.passed }}
+      fixable:
+        value: ${{ jobs.outcome.outputs.fixable }}
+      stage:
+        value: ${{ jobs.outcome.outputs.stage }}
+      summary:
+        value: ${{ jobs.outcome.outputs.summary }}
+      questions:
+        value: ${{ jobs.outcome.outputs.questions }}
+
+permissions:
+  contents: read
+
+env:
+  ISSUE: ${{ github.event.issue.number }}
+  BRANCH: factory/issue-${{ github.event.issue.number }}
+  BASE: ${{ github.event.repository.default_branch }}
+
+jobs:
+  build:
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+      id-token: write
+    outputs:
+      ok: ${{ steps.pr.outputs.ok }}
+      pr: ${{ steps.pr.outputs.pr }}
+      reason: ${{ steps.pr.outputs.reason }}
+      questions: ${{ steps.pr.outputs.questions }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+          # Claude must push with the Claude GitHub App token, not the workflow token:
+          # GitHub runs no CI for pushes made with the workflow token.
+          persist-credentials: false
+
+      - name: Write the trusted issue context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .factory/context.sh "$ISSUE" "$RUNNER_TEMP/factory-context"
+
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04+ runners restrict unprivileged user namespaces through AppArmor.
+          # The bwrap-userns-restrict profile strips the capabilities that Claude Code's
+          # seccomp helper needs inside bwrap. This VM is disposable, so lift both limits.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
+      - name: Prepare the toolchain
+        run: .factory/setup.sh
+
+      - name: Implement and open or update the pull request
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Use the factory-run skill. Stage: build. Round: ${{ inputs.round }}.
+            Issue: #${{ env.ISSUE }}. Its trusted context is in ${{ runner.temp }}/factory-context/issue.md.
+            Branch ${{ env.BRANCH }} is checked out and holds the visible acceptance tests from the spec stage.
+            ${{ inputs.round > 1 && 'This is a rework round: the pull request from this branch is open. Fix exactly the findings in the latest factory findings comment in the issue context, push, and update the pull request body.' || 'Open a new pull request.' }}
+          claude_args: |
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_BUILD || '80' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --add-dir ${{ runner.temp }}/factory-context
+            --allowedTools "Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr edit:*)"
+            --disallowedTools "Edit(./tests/acceptance/**),Write(./tests/acceptance/**),Bash(gh issue:*),Bash(gh api:*),Bash(gh pr view:*),Bash(gh pr merge:*),Bash(gh run:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["opened","updated","blocked"]},"reason":{"type":"string"},"questions":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["question","recommendation"]}}},"required":["status","reason"]}'
+
+      - name: Find the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "reason<<$delimiter"; jq -r '.reason // "The build stage returned no result."' <<<"$result"; echo "$delimiter"
+            echo "questions=$(jq -c '.questions // []' <<<"$result")"
+          } >> "$GITHUB_OUTPUT"
+          # Decisions travel as outputs, so the calling workflow always receives them.
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          case "$(jq -r '.status // "blocked"' <<<"$result")" in
+            opened|updated)
+              if [[ -n "$pr" ]]; then ok=true; else ok=false; echo "::warning::No open pull request from $BRANCH."; fi ;;
+            *) ok=false; echo "::warning::Build blocked." ;;
+          esac
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: build
+    if: needs.build.outputs.ok == 'true'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      head: ${{ steps.head.outputs.sha }}
+      ok: ${{ steps.result.outputs.ok }}
+      summary: ${{ steps.result.outputs.summary }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Record the verified commit
+        id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Guards
+        id: guards
+        env:
+          SPEC_TREE: ${{ inputs.acceptance_tree }}
+          EXTRA: ${{ vars.FACTORY_PROTECTED_REGEX }}
+        run: |
+          problems=""
+          [[ "$(git rev-parse HEAD:tests/acceptance 2>/dev/null)" == "$SPEC_TREE" ]] \
+            || problems+="tests/acceptance/ changed after the spec stage. "
+          [[ -z "$(git diff --name-only --diff-filter=MDRT "origin/$BASE...HEAD" -- tests/acceptance)" ]] \
+            || problems+="Existing acceptance tests were changed or removed. "
+          protected='^(\.github/|\.claude/|\.agents/|\.opencode/|\.devcontainer/|\.factory/|docs/decisions/|tests/holdout/|AGENTS\.md$|CLAUDE\.md$|PRODUCT\.md$|DESIGN\.md$|GLOSSARY\.md$|CODING_STANDARDS\.md$|\.env)'
+          manifests='(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|pyproject\.toml|uv\.lock|poetry\.lock|Pipfile(\.lock)?|requirements[^/]*\.txt|composer\.(json|lock)|Gemfile(\.lock)?|go\.(mod|sum)|Cargo\.(toml|lock))$'
+          hits="$(git diff --name-only "origin/$BASE...HEAD" | grep -E "$protected|$manifests${EXTRA:+|$EXTRA}" || true)"
+          [[ -z "$hits" ]] || problems+="These changes need a person: $(tr '\n' ' ' <<<"$hits")"
+          delimiter="EOF_$(openssl rand -hex 8)"
+          { echo "problems<<$delimiter"; echo "$problems"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+
+      - name: Visible checks
+        id: visible
+        if: steps.guards.outputs.problems == ''
+        run: |
+          set +e
+          { .factory/setup.sh && .factory/check.sh; } > "$RUNNER_TEMP/visible.log" 2>&1
+          code=$?
+          tail -n 200 "$RUNNER_TEMP/visible.log"
+          echo "ok=$([[ $code -eq 0 ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch the hidden tests
+        if: steps.visible.outputs.ok == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: factory-holdout
+          path: tests/holdout
+
+      - name: Hidden checks
+        id: hidden
+        if: steps.visible.outputs.ok == 'true'
+        run: |
+          set +e
+          .factory/check.sh > "$RUNNER_TEMP/hidden.log" 2>&1
+          code=$?
+          tail -n 200 "$RUNNER_TEMP/hidden.log"
+          echo "ok=$([[ $code -eq 0 ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Result
+        id: result
+        if: always()
+        env:
+          PROBLEMS: ${{ steps.guards.outputs.problems }}
+          VISIBLE: ${{ steps.visible.outputs.ok }}
+          HIDDEN: ${{ steps.hidden.outputs.ok }}
+        run: |
+          fence='```'
+          if [[ -n "$PROBLEMS" ]]; then
+            ok=false; summary="Guards failed: $PROBLEMS"
+          elif [[ "$VISIBLE" != true ]]; then
+            ok=false
+            summary="$(printf 'The visible checks failed (setup or check.sh). Last lines:\n\n%s\n%s\n%s' "$fence" "$(tail -n 40 "$RUNNER_TEMP/visible.log" 2>/dev/null)" "$fence")"
+          elif [[ "$HIDDEN" != true ]]; then
+            ok=false
+            summary="$(printf 'The visible checks pass, but the hidden acceptance tests fail: an edge case or criterion is probably not handled in general. Last lines:\n\n%s\n%s\n%s' "$fence" "$(tail -n 40 "$RUNNER_TEMP/hidden.log" 2>/dev/null)" "$fence")"
+          else
+            ok=true; summary="Guards, visible checks, and hidden checks passed."
+          fi
+          delimiter="EOF_$(openssl rand -hex 8)"
+          { echo "ok=$ok"; echo "summary<<$delimiter"; echo "$summary"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+          echo "$summary"
+
+  review:
+    needs: [build, verify]
+    if: needs.verify.outputs.ok == 'true'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: write
+      id-token: write
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+      reason: ${{ steps.verdict.outputs.reason }}
+      findings: ${{ steps.verdict.outputs.findings }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+
+      - name: Write the review context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.build.outputs.pr }}
+        run: |
+          ctx="$RUNNER_TEMP/factory-context"
+          .factory/context.sh "$ISSUE" "$ctx"
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body --jq '"# \(.title)\n\n\(.body)"' > "$ctx/pull-request.md"
+          gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" > "$ctx/pull-request.diff"
+
+      - name: Fetch the hidden tests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: factory-holdout
+          path: ${{ runner.temp }}/factory-context/holdout
+
+      # Needed even without Bash: .claude/settings.json makes Claude Code refuse to start without its sandbox.
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
+      - name: Review independently
+        id: claude
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Use the factory-run skill. Stage: review. Round: ${{ inputs.round }}.
+            Pull request #${{ needs.build.outputs.pr }} for issue #${{ env.ISSUE }}. Everything you need is in ${{ runner.temp }}/factory-context:
+            issue.md (trusted issue context), pull-request.md, pull-request.diff, and holdout/ (hidden tests; never quote them).
+          claude_args: |
+            --max-turns ${{ vars.FACTORY_MAX_TURNS_REVIEW || '40' }}
+            ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
+            --add-dir ${{ runner.temp }}/factory-context
+            --disallowedTools "Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch"
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]},"reason":{"type":"string"},"findings":{"type":"string"}},"required":["verdict","reason","findings"]}'
+
+      - name: Post the review and read the verdict
+        id: verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.build.outputs.pr }}
+          ROUND: ${{ inputs.round }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          result="${RESULT:-}"; [[ -n "$result" ]] || result='{}'
+          verdict="$(jq -r '.verdict // "fail"' <<<"$result")"
+          reason="$(jq -r '.reason // "The review stage returned no result."' <<<"$result")"
+          findings="$(jq -r '.findings // ""' <<<"$result")"
+          printf '<!-- factory:review -->\n**Factory review, round %s: %s**\n\n%s\n\n%s\n' "$ROUND" "$verdict" "$reason" "$findings" \
+            | gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "verdict=$verdict"
+            echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"
+            echo "findings<<$delimiter"; echo "$findings"; echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+  outcome:
+    needs: [build, verify, review]
+    if: always()
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    outputs:
+      pr: ${{ needs.build.outputs.pr }}
+      head: ${{ needs.verify.outputs.head }}
+      passed: ${{ steps.outcome.outputs.passed }}
+      fixable: ${{ steps.outcome.outputs.fixable }}
+      stage: ${{ steps.outcome.outputs.stage }}
+      summary: ${{ steps.outcome.outputs.summary }}
+      questions: ${{ needs.build.outputs.questions }}
+    steps:
+      - name: Decide the round's outcome and hand findings to the next round
+        id: outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ROUND: ${{ inputs.round }}
+          PR: ${{ needs.build.outputs.pr }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          BUILD_OK: ${{ needs.build.outputs.ok }}
+          BUILD_REASON: ${{ needs.build.outputs.reason }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          VERIFY_OK: ${{ needs.verify.outputs.ok }}
+          VERIFY_SUMMARY: ${{ needs.verify.outputs.summary }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_VERDICT: ${{ needs.review.outputs.verdict }}
+          REVIEW_REASON: ${{ needs.review.outputs.reason }}
+          REVIEW_FINDINGS: ${{ needs.review.outputs.findings }}
+        run: |
+          passed=false; fixable=false
+          if [[ "$BUILD_RESULT" != success || "$BUILD_OK" != true ]]; then
+            stage=build; summary="${BUILD_REASON:-The build stage failed; see the run log.}"
+          elif [[ "$VERIFY_RESULT" != success ]]; then
+            stage=verify; summary="The verify stage failed technically; see the run log."
+          elif [[ "$VERIFY_OK" != true ]]; then
+            stage=verify; summary="$VERIFY_SUMMARY"; [[ -n "$PR" ]] && fixable=true
+          elif [[ "$REVIEW_RESULT" != success ]]; then
+            stage=review; summary="The review stage failed technically; see the run log."
+          elif [[ "$REVIEW_VERDICT" != pass ]]; then
+            stage=review; summary="$(printf '%s\n\n%s' "$REVIEW_REASON" "$REVIEW_FINDINGS")"; [[ -n "$PR" ]] && fixable=true
+          else
+            stage=complete; passed=true; summary="Verify and review passed."
+          fi
+          if [[ "$fixable" == true ]]; then
+            # The next round's build stage reads this through the trusted issue context.
+            printf '<!-- factory:findings -->\n**Factory:** Round %s did not pass (%s) on pull request #%s. Findings:\n\n%s\n' \
+              "$ROUND" "$stage" "$PR" "$summary" | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -
+          fi
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "passed=$passed"; echo "fixable=$fixable"; echo "stage=$stage"
+            echo "summary<<$delimiter"; echo "$summary"; echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"

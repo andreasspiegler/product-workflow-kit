@@ -161,7 +161,7 @@ printf '{}\n' > "$FACTORY_TARGET/package.json"
 printf '{}\n' > "$FACTORY_TARGET/package-lock.json"
 "$KIT_ROOT/scripts/install.sh" --target "$FACTORY_TARGET" --runtime claude --sandbox agent --mode factory \
   --kit-version smoke-test-version > /dev/null
-for path in .github/workflows/factory.yml .factory/README.md .factory/setup.sh .factory/check.sh .factory/context.sh .claude/skills/factory-run/SKILL.md; do
+for path in .github/workflows/factory.yml .github/workflows/factory-round.yml .factory/README.md .factory/setup.sh .factory/check.sh .factory/context.sh .claude/skills/factory-run/SKILL.md; do
   assert_file "$FACTORY_TARGET/$path"
 done
 for script in setup.sh check.sh context.sh; do

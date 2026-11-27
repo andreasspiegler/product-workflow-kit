@@ -53,7 +53,7 @@ Return `proceed`, `risk`, and `reason`, plus `questions` when you stop for decis
 2. Implement following the `feature` skill: reconstruct context, prefer the smallest correct change, fix root causes, keep the diff surgical, reuse existing patterns. Solve the criteria in general: hidden tests check further cases, so special-casing the visible test inputs will fail.
 3. Run `.factory/check.sh` fresh and read the complete result. Every check must pass before you push.
 4. Commit and push with `git push origin HEAD`.
-5. In round 1, open the pull request with `gh pr create --base <default branch> --head <branch>`. In a rework round, fix exactly the findings in the latest `<!-- factory:rework -->` comment, push to the same branch, and update the body with `gh pr edit <number> --body-file <file>`; never open a second pull request.
+5. In round 1, open the pull request with `gh pr create --base <default branch> --head <branch>`. In a rework round, fix exactly the findings in the latest `<!-- factory:findings -->` comment, push to the same branch, and update the body with `gh pr edit <number> --body-file <file>`; never open a second pull request.
 6. The pull request body contains `Closes #<n>`, the risk level, and a verification record per the `quality-release` skill: each acceptance criterion mapped to its test and result, other checks run, known limits, and the rollback path. Add **Assumptions** (one per line, or "none") and a **Confidence** line: `Confident` only if you built what the criteria require, every check passed, and you made no material assumption; otherwise `Please check closely` with the reason.
 
 Return `status` (`opened`, `updated`, or `blocked`) and `reason`, plus `questions` when blocked on decisions.

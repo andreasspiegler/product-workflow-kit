@@ -8,7 +8,7 @@ Installed by `scripts/add-factory.sh` from the Product Workflow Kit. Everything 
 
 | Stage | Who | What | Protection |
 | --- | --- | --- | --- |
-| route | Workflow | Starts on `factory:ready` or on an answer to a factory question. | Answers count only from people with write access. |
+| route | Workflow | Starts on `factory:ready`, on an answer to a factory question or decomposition, or on the next part of a decomposed issue. | Answers count only from people with write access; the factory starts only untouched open issues. |
 | spec | Claude | Triage against the ceiling; write visible acceptance tests under `tests/acceptance/` and hidden tests under `tests/holdout/`; or stop with a question and options. | The workflow reads the ceiling before Claude runs; only new files under `tests/acceptance/` may be pushed; hidden tests leave the run only as an artifact. |
 | build | Claude | Implement the smallest correct change; open or, in a rework round, update the pull request with a verification record, assumptions, and a confidence line. | Never sees the hidden tests; cannot edit `tests/acceptance/`, read issues or comments directly, merge, or force-push. |
 | verify | Workflow | Acceptance tests unchanged since spec; no protected paths or dependency manifests changed; `.factory/setup.sh` and `.factory/check.sh` pass fresh, first without and then with the hidden tests. | Deterministic; read-only token; no secrets. |
@@ -37,6 +37,8 @@ Do these by hand; the kit never changes remote configuration.
    gh label create factory:needs-human --color D93F0B --description "The factory stopped and needs a decision"
    gh label create factory:human-review --color 1D76DB --description "Verified and reviewed; waiting for a human merge"
    gh label create factory:merged --color 5319E7 --description "Merged by the factory"
+   gh label create factory:retro --color C5DEF5 --description "Retro proposal from the factory"
+   gh label create factory:decomposed --color BFD4F2 --description "Split into sub-issues the factory works through"
    ```
 4. **Checks.** Make `.factory/setup.sh` install the toolchain and dependencies, and `.factory/check.sh` run every test including `tests/acceptance/` and `tests/holdout/`, which the factory adds only during verification. Both must exit non-zero on failure.
 5. **Required checks.** Set the repository variable `FACTORY_REQUIRED_CHECKS` to the names of your CI check runs, comma-separated (for example `test` or `lint,test`). The merge waits until each one succeeded on exactly the verified commit and refuses to merge if one fails or never appears. Without it, only the factory's own verify stage gates a merge, and the merge comment says so.
@@ -44,7 +46,7 @@ Do these by hand; the kit never changes remote configuration.
 7. **Production.** Keep production behind a GitHub Environment with required reviewers. The factory never deploys to production.
 8. **Branch protection (recommended).** Require your CI checks on the default branch. Do not require a human approval if `merge: auto` should work; use `merge: pr-only` instead.
 
-Optional repository variables: `FACTORY_MAX_REWORKS` (default 2), `FACTORY_RUNNER` (default `ubuntu-latest`; a self-hosted runner must be ephemeral, hold no personal data, and provide `sudo`, `bubblewrap`, and `socat`), `FACTORY_MODEL`, `FACTORY_MAX_TURNS_SPEC` (default 40), `FACTORY_MAX_TURNS_BUILD` (80), `FACTORY_MAX_TURNS_REVIEW` (40), and `FACTORY_PROTECTED_REGEX` for additional protected paths as an extended regular expression.
+Optional repository variables: `FACTORY_RETRO_EVERY` (default 10; 0 turns the retro off), `FACTORY_MAX_REWORKS` (default 2), `FACTORY_RUNNER` (default `ubuntu-latest`; a self-hosted runner must be ephemeral, hold no personal data, and provide `sudo`, `bubblewrap`, and `socat`), `FACTORY_MODEL`, `FACTORY_MAX_TURNS_SPEC` (default 40), `FACTORY_MAX_TURNS_BUILD` (80), `FACTORY_MAX_TURNS_REVIEW` (40), `FACTORY_MAX_TURNS_RETRO` (60), and `FACTORY_PROTECTED_REGEX` for additional protected paths as an extended regular expression.
 
 ## Using it
 
@@ -53,6 +55,16 @@ Write the issue with observable acceptance criteria (the `requirements-quality` 
 When the factory stops for decisions, it comments a round of numbered questions, each with options where there are real alternatives and a recommendation. Answer in a comment on the issue, for example `Q1: 2`, or `yes` to accept every recommendation; the factory closes any open factory pull request and starts again from the spec stage, with your answer as binding context. Comments from people without write access never start a run and never reach the agents. For other stops, clarify the issue, delete any leftover `factory/issue-<n>` branch, and add `factory:ready` again.
 
 Use the factory in private repositories, or where you trust the people who write issues: the issue body reaches the agents as input.
+
+## Decomposition
+
+When an issue is too big for one run but otherwise within the ceiling, the spec stage proposes two to eight vertical slices, each with its criteria and the earlier slices it depends on. Reply `yes` to accept: the factory creates them as native sub-issues with "blocked by" links, labels the original issue `factory:decomposed`, and starts the first unblocked part. Reply with changes instead, and the factory plans again.
+
+The parts run one at a time, each through its own spec, rounds, and merge, and each reads the parent issue as context. After a part merges, whether the factory or a person merged it, `.factory/next.sh` starts the next part whose blockers are closed; when every part is closed, it closes the parent. A part that stops for a person pauses the chain until its pull request merges. To skip a part, close it; to resume a paused chain, merge the part's pull request or run the workflow by hand with the next part's number.
+
+## Retro
+
+After every `FACTORY_RETRO_EVERY`-th merged factory pull request, whether the factory or a person merged it, `factory-retro.yml` gathers the trusted evidence of those pull requests (descriptions, reviews and comments from people with write access, factory findings, question rounds, and open escalations) and runs the `retro` skill headless. It proposes at most three changes, each backed by evidence, as a pull request labelled `factory:retro` for you to review. It may change `CODING_STANDARDS.md`, `GLOSSARY.md`, `AGENTS.md` pointers, `docs/`, and automated checks; the workflow closes a retro pull request that touches workflows, `.factory/`, isolation settings, `PRODUCT.md`, or acceptance tests. Changes to gates, the ceiling, or kit skills appear only as proposals in its description. The factory never merges a retro pull request, and while one is open, the automatic retro waits so proposals do not pile up or repeat. Run it on demand from the Actions tab with `force`; it then sees the open retro pull requests and does not propose their changes again.
 
 ## Extending the factory
 

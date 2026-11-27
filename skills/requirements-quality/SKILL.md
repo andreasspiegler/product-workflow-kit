@@ -37,6 +37,19 @@ Turn each material gap into a focused question, a measurable constraint, or an e
 
 When a person must decide, ask in rounds rather than one question at a time. A round holds every open decision whose prerequisites are already settled. Number each question, give your recommended answer with a one-line reason, and word it so that "yes" accepts the recommendation. A question that depends on an answer from the same round waits for the next round. Find facts yourself from the code, the product context, and available tools; only decisions go to the person. Stop when nothing material is silently assumed, and confirm the shared understanding before acting on it.
 
+## Slice work that is too big
+
+When a requirement is too big for one focused session, or bundles several behaviors that could ship separately, split it into slices before refining each:
+
+- Cut **vertical slices**: each one a narrow but complete path through every layer it needs (data, logic, interface, tests), demoable or verifiable on its own. Do not cut horizontal layers such as "all the database work" first.
+- Size each slice to fit one fresh agent session, with its own observable acceptance criteria.
+- Put enabling refactors first, so the later slices become simple: make the change easy, then make the easy change.
+- Give each slice its **blocking edges**: the slices that must be finished before it can start. A slice without blockers can start at once.
+- For a wide mechanical change across many call sites (renaming a field, retyping a shared value), use expand–contract instead: add the new form beside the old, migrate callers in batches, then remove the old form.
+- Describe behavior and contracts, not file paths or line numbers; they go stale while a slice waits.
+
+Present the slices as a numbered list with title, blockers, and what each delivers, and ask whether the granularity and the edges are right. With approval, create them on GitHub as sub-issues of the original issue, in dependency order, with native "blocked by" links.
+
 ## Keep the domain language
 
 Read `GLOSSARY.md` in the product root when it exists. When a term in the issue or conversation conflicts with it, or a term is vague or overloaded ("account": customer or user?), say so immediately and propose the canonical term. When a product-specific term is settled, propose adding it to `GLOSSARY.md`, creating the file with its first term:

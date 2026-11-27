@@ -57,6 +57,7 @@ Assess product uncertainty, experience/accessibility risk, technical/data/securi
 | New user journey or design-system change | Use `product-design` before implementation and ask for a decision where direction matters. |
 | Data, auth, payment, integration, or architecture change | Obtain technical review, record a durable decision only if needed, and plan rollback plus stronger verification. |
 | High-impact release | Add staged rollout, observability, explicit release approval, and an outcome check. |
+| Too big for one session, or several separable behaviors | Slice it first, as the `requirements-quality` skill describes, and work the slices in dependency order. |
 
 `nano`, `micro`, `standard`, and `large` may be useful shorthand, but they never automatically remove verification or human approval required by risk.
 

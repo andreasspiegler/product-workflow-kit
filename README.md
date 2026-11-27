@@ -59,6 +59,7 @@ Learn ───────────────────────► o
 | Build | What is the smallest correct change? | [`feature`](skills/feature/SKILL.md) | Pull request whose every line traces to the issue | Never. |
 | Verify and release | Does it meet the criteria, and is it safe to ship? | [`quality-release`](skills/quality-release/SKILL.md) | Verification record mapping each criterion to evidence, rollback path, explicit release approval, first-launch readiness, production smoke check | Never skip verification; its depth scales with risk. |
 | Learn | Did the change achieve the intended outcome? | `quality-release` | Outcome check: signal, window, owner, and the decision it informs | The change has no material intended outcome. |
+| Improve the environment | What should agents do differently next time? | [`retro`](skills/retro/SKILL.md) | At most three evidence-backed changes to checks, coding standards, glossary, or context | The work went smoothly and review found nothing recurring. |
 
 There is no separate specification document. The specification of a slice lives in its issue as acceptance criteria; only decisions and contracts that must outlive the issue move into `docs/decisions/`. The repository keeps durable context, the tracker keeps work state.
 
@@ -86,6 +87,7 @@ Human decision gates stay explicit at every step: consequential choices, externa
 | [`requirements-quality`](skills/requirements-quality/SKILL.md) | Yes | Clarifying complex, high-impact, or uncertain requirements directly in their issue. |
 | [`product-design`](skills/product-design/SKILL.md) | Yes | User journeys, reference discovery, design systems, motion/3D decisions, UX/a11y review, and optional design tools. |
 | [`quality-release`](skills/quality-release/SKILL.md) | Yes | Proportionate tests, release readiness, rollout risk, and outcome checks. |
+| [`retro`](skills/retro/SKILL.md) | Yes | Improving how agents work on the product after finished work: automated checks, coding standards, glossary, and context, backed by evidence. |
 | [`sot-builder`](skills/sot-builder/SKILL.md) | No — select with `--skill` | Guided durable decision and contract records; the name is kept for compatibility. |
 | [`nano-banana`](skills/nano-banana/SKILL.md) | No — select with `--skill` | Optional, authorized visual exploration only. |
 | [`factory-run`](skills/factory-run/SKILL.md) | Only with `--mode factory` | Headless spec, build, and review stages of the factory workflow. |
@@ -100,7 +102,7 @@ From the workflow kit checkout, install the shared context and selected skills i
 ./scripts/install.sh --target ../my-product --runtime claude
 ```
 
-The installer copies the product context (`CLAUDE.md` only when Claude Code is a selected runtime), records the current kit version (nearest Git tag, or commit if untagged) and date in `PRODUCT.md`, and installs the five core skills locally (`kickoff`, `feature`, `requirements-quality`, `product-design`, `quality-release`). `--skill` replaces that default selection, so name every skill you want, including optional ones such as `sot-builder`. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
+The installer copies the product context (`CLAUDE.md` only when Claude Code is a selected runtime), records the current kit version (nearest Git tag, or commit if untagged) and date in `PRODUCT.md`, and installs the six core skills locally (`kickoff`, `feature`, `requirements-quality`, `product-design`, `quality-release`, `retro`). `--skill` replaces that default selection, so name every skill you want, including optional ones such as `sot-builder`. It refuses to overwrite existing context or skill files and never changes global configuration, hooks, plugins, permissions, or connectors.
 
 Choose a different or additional runtime deliberately:
 
@@ -135,7 +137,7 @@ Each product also decides who resolves the human gates in day-to-day work. `kick
 | Mode | What happens |
 | --- | --- |
 | `human-led` | Default. A person decides at every gate; agents create evidence. |
-| `factory` | Labelling an issue `factory:ready` starts a GitHub Actions workflow: Claude writes visible acceptance tests and hidden tests, implements and opens a pull request without seeing the hidden tests, a deterministic stage re-runs every check including the hidden tests and rejects changes to protected paths or dependencies, a second Claude pass reviews with a fresh context, and the workflow merges and optionally deploys to staging. Failed checks or reviews go back for up to two rework rounds. Work above the autonomy ceiling, and every gate the factory may not take, comes back labelled `factory:needs-human` with a question and options; answering in the issue restarts the factory. Agents only see comments from people with write access. |
+| `factory` | Labelling an issue `factory:ready` starts a GitHub Actions workflow: Claude writes visible acceptance tests and hidden tests, implements and opens a pull request without seeing the hidden tests, a deterministic stage re-runs every check including the hidden tests and rejects changes to protected paths or dependencies, a second Claude pass reviews with a fresh context, and the workflow merges and optionally deploys to staging. Failed checks or reviews go back for up to two rework rounds. Issues that are too big are proposed as sub-issues with dependencies and, after approval, worked through one at a time; every tenth merge triggers a retro pull request. Work above the autonomy ceiling, and every gate the factory may not take, comes back labelled `factory:needs-human` with a question and options; answering in the issue restarts the factory. Agents only see comments from people with write access. |
 
 ```bash
 ./scripts/install.sh --target ../my-product --runtime claude --sandbox container --mode factory --stack node
@@ -178,7 +180,7 @@ Use the installer above for normal setup. The following project-local copy examp
 mkdir -p .claude/skills
 cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
   "$WORKFLOW_KIT/skills/requirements-quality" "$WORKFLOW_KIT/skills/product-design" \
-  "$WORKFLOW_KIT/skills/quality-release" \
+  "$WORKFLOW_KIT/skills/quality-release" "$WORKFLOW_KIT/skills/retro" \
   .claude/skills/
 ```
 
@@ -190,7 +192,7 @@ Use the role briefs only when the team wants Claude Code subagents, by adapting 
 mkdir -p .agents/skills
 cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
   "$WORKFLOW_KIT/skills/requirements-quality" "$WORKFLOW_KIT/skills/product-design" \
-  "$WORKFLOW_KIT/skills/quality-release" \
+  "$WORKFLOW_KIT/skills/quality-release" "$WORKFLOW_KIT/skills/retro" \
   .agents/skills/
 ```
 
@@ -202,7 +204,7 @@ Keep `AGENTS.md` in the product root. Configure only the Codex-specific agent, p
 mkdir -p .opencode/skills
 cp -R "$WORKFLOW_KIT/skills/kickoff" "$WORKFLOW_KIT/skills/feature" \
   "$WORKFLOW_KIT/skills/requirements-quality" "$WORKFLOW_KIT/skills/product-design" \
-  "$WORKFLOW_KIT/skills/quality-release" \
+  "$WORKFLOW_KIT/skills/quality-release" "$WORKFLOW_KIT/skills/retro" \
   .opencode/skills/
 ```
 

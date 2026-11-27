@@ -1,10 +1,10 @@
 ---
 name: factory-run
 description: >-
-  Run one headless stage of the factory workflow (spec, build, or review) for a
-  GitHub issue in a product whose PRODUCT.md sets `mode: factory`. Used by
-  .github/workflows/factory.yml; not for interactive work, which uses
-  `feature`.
+  Run one headless stage of the factory workflow (spec, build, review, or
+  retro) in a product whose PRODUCT.md sets `mode: factory`. Used by the
+  factory workflows in .github/workflows/; not for interactive work, which
+  uses `feature` or `retro`.
 ---
 
 # Factory run
@@ -35,6 +35,12 @@ In the spec stage, set `proceed` to `false`; in the build stage, set `status` to
 
 Stopping early is a correct outcome, not a failure.
 
+## Propose a decomposition when only size stops you
+
+When the only reason to stop is size (the work needs more than one fresh session, or bundles several behaviors that could ship separately) and no other reason above applies, return `decomposition` instead of `questions`: two to eight vertical slices as the `requirements-quality` skill describes. Each slice has a `title`, the `behavior` it delivers, observable `criteria` that together cover the original acceptance criteria, and `blocked_by` with the 1-based numbers of earlier slices it depends on (only earlier ones). Put enabling refactors first. Each slice must fit the autonomy ceiling on its own; if one cannot, ask instead. A person approves the plan; the factory then creates the slices as sub-issues and works through them one at a time, each with its own spec stage.
+
+When a slice runs as its own issue, its context names the parent issue: read the parent's problem, non-goals, and answers there, and build only this slice.
+
 ## Stage: spec
 
 1. Triage the issue as above. Classify the risk honestly as `nano`, `micro`, `standard`, or `large`; the workflow compares it with the ceiling.
@@ -45,7 +51,7 @@ Stopping early is a correct outcome, not a failure.
 4. Run `.factory/check.sh` and confirm that both sets fail for the expected reason (the behavior is missing), not because of a syntax or setup error.
 5. Commit only the visible tests (`test: acceptance tests for #<n>`), never `tests/holdout/`, and push with `git push origin HEAD`. Do not change any existing file.
 
-Return `proceed`, `risk`, and `reason`, plus `questions` when you stop for decisions. When you stop, do not push anything.
+Return `proceed`, `risk`, and `reason`, plus `questions` when you stop for decisions or `decomposition` when only size stops you. When you stop, do not push anything.
 
 ## Stage: build
 
@@ -70,3 +76,20 @@ You are an independent reviewer with a fresh context. You did not write this cha
 4. Write `findings` as Markdown with a `## Spec` and a `## Standards` section, each finding with file and line and reproducible enough that the build stage can fix it without asking. Do not merge or rerank the two axes. Never quote or paraphrase the hidden tests; describe the behavior that is wrong instead. When a mechanical problem would be better caught by an automated check, say so in the finding.
 
 Return `verdict` (`pass` or `fail`), `reason`, and `findings`. Fail on any material Spec finding, on any violation of a documented standard, on a risk above the ceiling, and whenever you are not confident the change is correct; judgement-call smells alone do not fail a change. A `fail` sends the change back to the build stage while rework rounds remain; a `pass` lets the workflow merge (or hand to a person, with `merge: pr-only`).
+
+## Stage: retro
+
+Follow the `retro` skill without a human: gather nothing yourself; the evidence is in the directory named in the prompt (`metrics.md`, `escalations.md`, `open-retros.md`, `issues/`, `pull-requests/`). Never propose a change that an open retro pull request in `open-retros.md` already proposes; if nothing else meets the evidence bar, return `none`. The strongest signals are what people did after the factory: their review comments, their changes before a merge, and escalations they answered. Next come factory findings and questions that recur across pull requests, and escalations that turned out unnecessary.
+
+Unlike the other stages, the retro may change these files, and only these, on the checked-out branch:
+
+- `CODING_STANDARDS.md` and `GLOSSARY.md`;
+- `AGENTS.md`, sparingly, for navigation pointers;
+- `docs/` other than `docs/decisions/`;
+- automated checks: tests outside `tests/acceptance/` and `tests/holdout/`, and lint or type-check configuration that needs no new dependency.
+
+Never change `.github/`, `.factory/`, `.devcontainer/`, `.claude/settings*`, `PRODUCT.md`, or existing acceptance tests; the workflow closes a retro pull request that does. Skill copies in `.claude/skills/` come from the workflow kit: propose changes to them, to the gates, the autonomy ceiling, or the isolation under **Decisions for a person** in the pull request body instead of editing them.
+
+Make at most three changes. A new automated check must pass on the current code; run `.factory/check.sh` before you commit. Commit, push with `git push origin HEAD`, and open the pull request with `gh pr create` titled `Factory retro: <short summary>`. Its body starts with the data (the window and the metrics table), then for each change: **Observation** with links, **Change**, **Expected effect**, and **How to tell**. When nothing meets the evidence bar, commit nothing and return `none` with the reason.
+
+Return `status` (`opened` or `none`) and `reason`.

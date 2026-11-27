@@ -161,13 +161,14 @@ printf '{}\n' > "$FACTORY_TARGET/package.json"
 printf '{}\n' > "$FACTORY_TARGET/package-lock.json"
 "$KIT_ROOT/scripts/install.sh" --target "$FACTORY_TARGET" --runtime claude --sandbox agent --mode factory \
   --kit-version smoke-test-version > /dev/null
-for path in .github/workflows/factory.yml .github/workflows/factory-round.yml .github/workflows/factory-retro.yml .claude/skills/retro/SKILL.md .factory/README.md .factory/setup.sh .factory/check.sh .factory/context.sh .claude/skills/factory-run/SKILL.md; do
+for path in .github/workflows/factory.yml .github/workflows/factory-round.yml .github/workflows/factory-retro.yml .claude/skills/retro/SKILL.md .factory/README.md .factory/setup.sh .factory/check.sh .factory/context.sh .factory/next.sh .claude/skills/factory-run/SKILL.md; do
   assert_file "$FACTORY_TARGET/$path"
 done
-for script in setup.sh check.sh context.sh; do
+for script in setup.sh check.sh context.sh next.sh; do
   [[ -x "$FACTORY_TARGET/.factory/$script" ]] || fail "factory script must be executable: $script"
 done
 bash -n "$FACTORY_TARGET/.factory/context.sh" || fail 'context.sh has a syntax error'
+bash -n "$FACTORY_TARGET/.factory/next.sh" || fail 'next.sh has a syntax error'
 assert_contains "$FACTORY_TARGET/.factory/setup.sh" 'npm ci'
 assert_contains "$FACTORY_TARGET/.factory/check.sh" 'npm test'
 bash -n "$FACTORY_TARGET/.factory/setup.sh" || fail 'setup.sh has a syntax error'

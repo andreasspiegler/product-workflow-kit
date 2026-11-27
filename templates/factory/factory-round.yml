@@ -12,6 +12,10 @@ name: Factory round
 on:
   workflow_call:
     inputs:
+      issue:
+        description: The issue this round works on
+        required: true
+        type: number
       round:
         description: Round number, starting at 1
         required: true
@@ -40,8 +44,8 @@ permissions:
   contents: read
 
 env:
-  ISSUE: ${{ github.event.issue.number }}
-  BRANCH: factory/issue-${{ github.event.issue.number }}
+  ISSUE: ${{ inputs.issue }}
+  BRANCH: factory/issue-${{ inputs.issue }}
   BASE: ${{ github.event.repository.default_branch }}
 
 jobs:
@@ -94,12 +98,15 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Parts of a decomposed issue are started by the factory itself.
+          allowed_bots: github-actions[bot]
           prompt: |
             Use the factory-run skill. Stage: build. Round: ${{ inputs.round }}.
             Issue: #${{ env.ISSUE }}. Its trusted context is in ${{ runner.temp }}/factory-context/issue.md.
             Branch ${{ env.BRANCH }} is checked out and holds the visible acceptance tests from the spec stage.
             ${{ inputs.round > 1 && 'This is a rework round: the pull request from this branch is open. Fix exactly the findings in the latest factory findings comment in the issue context, push, and update the pull request body.' || 'Open a new pull request.' }}
           claude_args: |
+            --permission-mode auto
             --max-turns ${{ vars.FACTORY_MAX_TURNS_BUILD || '80' }}
             ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
             --add-dir ${{ runner.temp }}/factory-context
@@ -273,11 +280,14 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Parts of a decomposed issue are started by the factory itself.
+          allowed_bots: github-actions[bot]
           prompt: |
             Use the factory-run skill. Stage: review. Round: ${{ inputs.round }}.
             Pull request #${{ needs.build.outputs.pr }} for issue #${{ env.ISSUE }}. Everything you need is in ${{ runner.temp }}/factory-context:
             issue.md (trusted issue context), pull-request.md, pull-request.diff, and holdout/ (hidden tests; never quote them).
           claude_args: |
+            --permission-mode auto
             --max-turns ${{ vars.FACTORY_MAX_TURNS_REVIEW || '40' }}
             ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
             --add-dir ${{ runner.temp }}/factory-context

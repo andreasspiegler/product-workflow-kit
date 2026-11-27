@@ -104,7 +104,7 @@ Propose the smallest testable slice with:
 - verification evidence required before release;
 - a post-release outcome check when the slice ships.
 
-When the product clearly needs several features, optionally propose a feature map as issues: each with a short outcome, priority, and dependencies, ordered so that foundations such as authentication or the data model come first. Create the issues only with approval, and keep the map in the tracker rather than in a status file.
+When the product clearly needs several features, optionally propose a feature map as issues: each with a short outcome, priority, and dependencies, ordered so that foundations such as authentication or the data model come first. Slice each feature as the `requirements-quality` skill describes: vertical slices that fit one session, with blocking edges as native GitHub links. Create the issues only with approval, and keep the map in the tracker rather than in a status file.
 
 Wait for explicit direction before crossing a human gate, creating external resources, spending paid credits, or releasing to users.
 

@@ -20,24 +20,34 @@ on:
     types: [labeled]
   issue_comment:
     types: [created]
+  # The factory starts the next part of a decomposed issue itself.
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue to start (normally dispatched by the factory)
+        required: true
+  # A person merged a factory pull request: continue a decomposed issue.
+  pull_request:
+    types: [closed]
 
 permissions:
   contents: read
 
 concurrency:
   # Real factory events get one queue per issue and kind; unrelated events get their own group.
-  group: factory-${{ github.event.issue.number }}-${{ (github.event_name == 'issues' && github.event.label.name == 'factory:ready' && 'start') || (github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'factory:needs-human') && 'answer') || github.run_id }}
+  group: factory-${{ github.event.issue.number || inputs.issue || 'pr' }}-${{ ((github.event_name == 'workflow_dispatch' || (github.event_name == 'issues' && github.event.label.name == 'factory:ready')) && 'start') || (github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'factory:needs-human') && 'answer') || github.run_id }}
   cancel-in-progress: false
 
 env:
-  ISSUE: ${{ github.event.issue.number }}
-  BRANCH: factory/issue-${{ github.event.issue.number }}
+  ISSUE: ${{ github.event.issue.number || inputs.issue }}
+  BRANCH: factory/issue-${{ github.event.issue.number || inputs.issue }}
   BASE: ${{ github.event.repository.default_branch }}
 
 jobs:
   route:
     if: >-
       (github.event_name == 'issues' && github.event.label.name == 'factory:ready') ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
        contains(github.event.issue.labels.*.name, 'factory:needs-human') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
@@ -56,16 +66,32 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
+          COMMENT: ${{ github.event.comment.body }}
         run: |
           case "$EVENT" in
             issues)
               mode=start
               gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label factory:running --remove-label factory:ready
               ;;
+            workflow_dispatch)
+              # Start only an open issue that no factory run has touched yet.
+              state="$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE" --jq '.state + " " + ([.labels[].name | select(startswith("factory:"))] | join(","))')"
+              if [[ "$state" == "open " ]]; then
+                mode=start
+                gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label factory:running
+              else
+                echo "::warning::#$ISSUE is not an untouched open issue ($state); not starting."
+                mode=none
+              fi
+              ;;
             issue_comment)
               last="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" \
                 | jq -rs 'add // [] | map(select(.user.login == "github-actions[bot]" and (.body | contains("<!-- factory:")))) | last | .body // ""')"
-              if [[ "$last" == *"<!-- factory:question -->"* ]]; then
+              answer="$(tr -d '[:space:][:punct:]' <<<"$COMMENT" | tr '[:upper:]' '[:lower:]')"
+              if [[ "$last" == *"<!-- factory:decompose -->"* && "$answer" =~ ^(yes|ja|y|ok|okay)$ ]]; then
+                mode=decompose
+                gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label factory:running --remove-label factory:needs-human
+              elif [[ "$last" == *"<!-- factory:question -->"* || "$last" == *"<!-- factory:decompose -->"* ]]; then
                 mode=answer
                 # An answer restarts the factory from scratch with the answer as binding context.
                 for pr in $(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[].number'); do
@@ -94,6 +120,7 @@ jobs:
       proceed: ${{ steps.decide.outputs.proceed }}
       reason: ${{ steps.decide.outputs.reason }}
       questions: ${{ steps.decide.outputs.questions }}
+      decomposition: ${{ steps.decide.outputs.decomposition }}
       acceptance_tree: ${{ steps.decide.outputs.acceptance_tree }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -150,17 +177,20 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Parts of a decomposed issue are started by the factory itself.
+          allowed_bots: github-actions[bot]
           prompt: |
             Use the factory-run skill. Stage: spec.
             Issue: #${{ env.ISSUE }}. Its trusted context is in ${{ runner.temp }}/factory-context/issue.md.
             Branch ${{ env.BRANCH }} is checked out.
           claude_args: |
+            --permission-mode auto
             --max-turns ${{ vars.FACTORY_MAX_TURNS_SPEC || '40' }}
             ${{ vars.FACTORY_MODEL && format('--model {0}', vars.FACTORY_MODEL) || '' }}
             --add-dir ${{ runner.temp }}/factory-context
             --allowedTools "Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD)"
             --disallowedTools "Bash(gh:*),Bash(git push --force:*),Bash(git push -f:*)"
-            --json-schema '{"type":"object","properties":{"proceed":{"type":"boolean"},"risk":{"type":"string","enum":["nano","micro","standard","large"]},"reason":{"type":"string"},"questions":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["question","recommendation"]}}},"required":["proceed","risk","reason"]}'
+            --json-schema '{"type":"object","properties":{"proceed":{"type":"boolean"},"risk":{"type":"string","enum":["nano","micro","standard","large"]},"reason":{"type":"string"},"questions":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["question","recommendation"]}},"decomposition":{"type":"array","maxItems":8,"items":{"type":"object","properties":{"title":{"type":"string"},"behavior":{"type":"string"},"criteria":{"type":"array","items":{"type":"string"}},"blocked_by":{"type":"array","items":{"type":"integer"}}},"required":["title","behavior","criteria"]}}},"required":["proceed","risk","reason"]}'
 
       - name: Decide deterministically whether to proceed
         id: decide
@@ -203,6 +233,7 @@ jobs:
             echo "proceed=$proceed"
             echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"
             echo "questions=$(jq -c '.questions // []' <<<"$result")"
+            echo "decomposition=$(jq -c '.decomposition // []' <<<"$result")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Keep the hidden tests out of the build stage
@@ -213,6 +244,61 @@ jobs:
           path: ${{ runner.temp }}/factory-holdout
           if-no-files-found: error
           retention-days: 14
+
+  # A person accepted a proposed decomposition: create the parts as native sub-issues
+  # with blocking links, then start the first unblocked part.
+  decompose:
+    needs: route
+    if: needs.route.outputs.mode == 'decompose'
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create the sub-issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          plan="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" \
+            | jq -rs 'add // [] | map(select(.user.login == "github-actions[bot]" and (.body | contains("<!-- factory:decompose -->")))) | last | .body // ""' \
+            | sed -nE 's/.*<!-- factory:plan:([A-Za-z0-9+\/=]+) -->.*/\1/p' | head -n1 | base64 -d)"
+          count="$(jq 'length' <<<"$plan")"
+          [[ "$count" -ge 2 ]] || { echo "::error::No valid decomposition plan found."; exit 1; }
+          # Blocking edges may only point to earlier parts, so the order is a valid build order.
+          jq -e 'to_entries | all(.key as $i | (.value.blocked_by // []) | all(. >= 1 and . <= $i))' <<<"$plan" >/dev/null \
+            || { echo "::error::The plan has a blocking edge that does not point to an earlier part."; exit 1; }
+          numbers=(); ids=()
+          for i in $(seq 0 $((count - 1))); do
+            part="$(jq ".[$i]" <<<"$plan")"
+            title="$(jq -r '.title' <<<"$part")"
+            body="$(jq -r --arg parent "$ISSUE" '"## What to build\n\n\(.behavior)\n\n## Acceptance criteria\n\n" + ((.criteria // []) | map("- [ ] " + .) | join("\n")) + "\n\n## Context\n\nPart of a decomposition: see the parent issue #\($parent) for the problem, non-goals, and answers. Created by the factory."' <<<"$part")"
+            url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body")"
+            n="${url##*/}"
+            id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$n" --jq '.id')"
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$ISSUE/sub_issues" -F sub_issue_id="$id" >/dev/null
+            for b in $(jq -r '(.blocked_by // [])[]' <<<"$part"); do
+              gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$n/dependencies/blocked_by" -F issue_id="${ids[$((b - 1))]}" >/dev/null
+            done
+            numbers+=("$n"); ids+=("$id")
+            echo "Created #$n: $title"
+          done
+          gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label factory:running --add-label factory:decomposed
+          {
+            printf '<!-- factory:decomposed -->\n**Factory:** Created %s sub-issues: ' "$count"
+            printf '#%s ' "${numbers[@]}"
+            printf '\n\nThe factory works through them one at a time, each with its own spec, rounds, and merge, starting with the first unblocked part. This issue closes when all parts are done.\n'
+          } | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -
+
+      - name: Start the first unblocked part
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .factory/next.sh "$ISSUE"
 
   # Each round is build → verify → review in factory-round.yml. Running all rounds in
   # this one run keeps its human actor, so the Claude GitHub App pushes and CI runs.
@@ -226,6 +312,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/factory-round.yml
     with:
+      issue: ${{ fromJSON(format('{0}', github.event.issue.number || inputs.issue)) }}
       round: 1
       acceptance_tree: ${{ needs.spec.outputs.acceptance_tree }}
     secrets: inherit
@@ -240,6 +327,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/factory-round.yml
     with:
+      issue: ${{ fromJSON(format('{0}', github.event.issue.number || inputs.issue)) }}
       round: 2
       acceptance_tree: ${{ needs.spec.outputs.acceptance_tree }}
     secrets: inherit
@@ -254,6 +342,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/factory-round.yml
     with:
+      issue: ${{ fromJSON(format('{0}', github.event.issue.number || inputs.issue)) }}
       round: 3
       acceptance_tree: ${{ needs.spec.outputs.acceptance_tree }}
     secrets: inherit
@@ -335,13 +424,19 @@ jobs:
           echo "note=$note" >> "$GITHUB_OUTPUT"
 
   report:
-    needs: [route, spec, round-1, round-2, round-3, merge]
+    needs: [route, spec, decompose, round-1, round-2, round-3, merge]
     if: always() && needs.route.result == 'success' && needs.route.outputs.mode != 'none'
     runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
+      contents: read
       issues: write
+      actions: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Label, comment, and hand back
         env:
           GH_TOKEN: ${{ github.token }}
@@ -350,6 +445,9 @@ jobs:
           SPEC_PROCEED: ${{ needs.spec.outputs.proceed }}
           SPEC_REASON: ${{ needs.spec.outputs.reason }}
           SPEC_QUESTIONS: ${{ needs.spec.outputs.questions }}
+          SPEC_DECOMPOSITION: ${{ needs.spec.outputs.decomposition }}
+          MODE: ${{ needs.route.outputs.mode }}
+          DECOMPOSE_RESULT: ${{ needs.decompose.result }}
           R1: ${{ toJSON(needs.round-1) }}
           R2: ${{ toJSON(needs.round-2) }}
           R3: ${{ toJSON(needs.round-3) }}
@@ -357,7 +455,14 @@ jobs:
           MERGE_OUTCOME: ${{ needs.merge.outputs.outcome }}
           MERGE_NOTE: ${{ needs.merge.outputs.note }}
         run: |
-          label=factory:needs-human; marker=stopped; body=""; questions="[]"
+          label=factory:needs-human; marker=stopped; body=""; questions="[]"; plan="[]"
+          if [[ "$MODE" == decompose ]]; then
+            [[ "$DECOMPOSE_RESULT" == success ]] && exit 0
+            gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label factory:running --add-label factory:needs-human
+            printf '<!-- factory:stopped -->\n**Factory:** Creating the sub-issues failed. Check for partly created sub-issues, then see the run log.\n\nRun: %s\n' "$RUN_URL" \
+              | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -
+            exit 0
+          fi
           # The last round that ran decides; rounds that were skipped have no outputs.
           last=""; rounds=0
           for r in "$R1" "$R2" "$R3"; do
@@ -370,6 +475,7 @@ jobs:
           elif [[ "$SPEC_PROCEED" != true ]]; then
             body="Stopped in the spec stage: $SPEC_REASON"
             questions="${SPEC_QUESTIONS:-[]}"
+            plan="${SPEC_DECOMPOSITION:-[]}"
           elif [[ -z "$last" ]]; then
             body="No build round ran. See the run log."
           elif [[ "$(out passed)" != true ]]; then
@@ -390,7 +496,15 @@ jobs:
             body="Pull request #$(out pr), after $rounds round(s): $MERGE_NOTE"
           fi
 
-          if [[ "$(jq 'length' <<<"$questions" 2>/dev/null || echo 0)" -gt 0 ]]; then
+          if [[ "$(jq 'length' <<<"$plan" 2>/dev/null || echo 0)" -ge 2 ]]; then
+            marker=decompose
+            parts="$(jq -r 'to_entries | map("\(.key + 1). **\(.value.title)**"
+              + (if ((.value.blocked_by // []) | length) > 0 then " (after " + ((.value.blocked_by) | map(tostring) | join(", ")) + ")" else "" end)
+              + ": \(.value.behavior)\n" + ((.value.criteria // []) | map("   - " + .) | join("\n"))) | join("\n")' <<<"$plan")"
+            encoded="$(jq -c '.' <<<"$plan" | base64 -w0)"
+            body="$(printf '%s\n\n**Proposed decomposition** (each part fits one factory run and can be verified on its own):\n\n%s\n\nReply \x60yes\x60 to create these as sub-issues; the factory then works through them one at a time. Reply with changes instead, and the factory plans again.\n\n<!-- factory:plan:%s -->' \
+              "$body" "$parts" "$encoded")"
+          elif [[ "$(jq 'length' <<<"$questions" 2>/dev/null || echo 0)" -gt 0 ]]; then
             marker=question
             asked="$(jq -r 'to_entries | map(.key as $i | .value as $q
               | "**Q\($i + 1): \($q.question)**\n\n"
@@ -406,7 +520,31 @@ jobs:
           # Closing keywords do not fire for merges made with the workflow token.
           if [[ "$label" == factory:merged ]]; then
             gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY" --reason completed
+            .factory/next.sh "$ISSUE"
           fi
+
+  # A person merged a factory pull request (for example with merge: pr-only): continue
+  # a decomposed issue with its next part.
+  continue:
+    if: >-
+      github.event_name == 'pull_request' && github.event.pull_request.merged &&
+      startsWith(github.event.pull_request.head.ref, 'factory/issue-')
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start the next part
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: .factory/next.sh "${HEAD_REF#factory/issue-}"
 
   # Every FACTORY_RETRO_EVERY-th merged factory pull request, propose improvements to how
   # agents work on this product, as a pull request for a person (factory-retro.yml).

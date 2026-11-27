@@ -21,6 +21,7 @@ Installs:
   .factory/check.sh               all tests, including tests/acceptance/ and the
                                   hidden tests the factory adds under tests/holdout/
   .factory/context.sh             writes the trusted issue context for the agents
+  .factory/next.sh                starts the next part of a decomposed issue
   .factory/README.md              one-time setup checklist and limits
   .claude/skills/factory-run/     the headless stage instructions
   .claude/skills/retro/           the retro skill, if not installed yet
@@ -114,7 +115,8 @@ cp "$TEMPLATES/factory-round.yml" "$TARGET/.github/workflows/factory-round.yml"
 cp "$TEMPLATES/factory-retro.yml" "$TARGET/.github/workflows/factory-retro.yml"
 cp "$TEMPLATES/README.md" "$TARGET/.factory/README.md"
 cp "$TEMPLATES/context.sh" "$TARGET/.factory/context.sh"
-chmod +x "$TARGET/.factory/context.sh"
+cp "$TEMPLATES/next.sh" "$TARGET/.factory/next.sh"
+chmod +x "$TARGET/.factory/context.sh" "$TARGET/.factory/next.sh"
 write_script "$TARGET/.factory/setup.sh" \
   "Installs the toolchain and dependencies. Runs outside the agent sandbox, before each stage and in verify." \
   "$SETUP_BODY"

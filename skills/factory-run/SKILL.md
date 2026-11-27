@@ -35,6 +35,12 @@ In the spec stage, set `proceed` to `false`; in the build stage, set `status` to
 
 Stopping early is a correct outcome, not a failure.
 
+## Propose a decomposition when only size stops you
+
+When the only reason to stop is size (the work needs more than one fresh session, or bundles several behaviors that could ship separately) and no other reason above applies, return `decomposition` instead of `questions`: two to eight vertical slices as the `requirements-quality` skill describes. Each slice has a `title`, the `behavior` it delivers, observable `criteria` that together cover the original acceptance criteria, and `blocked_by` with the 1-based numbers of earlier slices it depends on (only earlier ones). Put enabling refactors first. Each slice must fit the autonomy ceiling on its own; if one cannot, ask instead. A person approves the plan; the factory then creates the slices as sub-issues and works through them one at a time, each with its own spec stage.
+
+When a slice runs as its own issue, its context names the parent issue: read the parent's problem, non-goals, and answers there, and build only this slice.
+
 ## Stage: spec
 
 1. Triage the issue as above. Classify the risk honestly as `nano`, `micro`, `standard`, or `large`; the workflow compares it with the ceiling.
@@ -45,7 +51,7 @@ Stopping early is a correct outcome, not a failure.
 4. Run `.factory/check.sh` and confirm that both sets fail for the expected reason (the behavior is missing), not because of a syntax or setup error.
 5. Commit only the visible tests (`test: acceptance tests for #<n>`), never `tests/holdout/`, and push with `git push origin HEAD`. Do not change any existing file.
 
-Return `proceed`, `risk`, and `reason`, plus `questions` when you stop for decisions. When you stop, do not push anything.
+Return `proceed`, `risk`, and `reason`, plus `questions` when you stop for decisions or `decomposition` when only size stops you. When you stop, do not push anything.
 
 ## Stage: build
 

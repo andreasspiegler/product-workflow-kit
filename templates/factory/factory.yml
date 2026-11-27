@@ -468,6 +468,17 @@ jobs:
           run-id: ${{ inputs.holdout_run }}
           github-token: ${{ github.token }}
 
+      # Needed even without Bash: .claude/settings.json makes Claude Code refuse to start without its sandbox.
+      - name: Prepare the Claude Code sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
       - name: Review independently
         id: claude
         uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290

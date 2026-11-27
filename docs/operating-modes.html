@@ -3,496 +3,456 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Product Workflow Kit · Betriebsmodi</title>
+  <title>Product Workflow Kit · Arbeitsmodi</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { margin: 0; }
-    /* Standalone colors: the page also renders inside tools that set these tokens themselves. */
     :root {
-      --background: #ffffff; --foreground: #1f2328; --muted-foreground: #59636e;
-      --border: #d1d9e0; --card: #f6f8fa; --card-foreground: #1f2328; --secondary: #eef1f4;
-      --primary: #2f6feb; --info: #2f6feb; --warning: #9a4d00; --warning-surface: #fff4e5;
-      --radius: 10px;
-      --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color-scheme: light dark;
+      --background: #fcfcf9;
+      --foreground: #202820;
+      --muted: #49574d;
+      --secondary: #f2f3ed;
+      --border: #7d897e;
+      --rule: #d4d9d0;
+      --primary: #205348;
+      --primary-surface: #eaf2ec;
+      --warning: #823c29;
+      --warning-surface: #f9eee8;
+      --ring: var(--primary);
+      --code-background: var(--secondary);
+      --font-sans: system-ui, sans-serif;
+      --font-serif: Charter, "Bitstream Charter", Georgia, serif;
+      --font-mono: ui-monospace, monospace;
+      --radius: 0.875rem;
     }
-    @media (prefers-color-scheme: dark) {
+
+    @media screen and (prefers-color-scheme: dark) {
       :root {
-        --background: #0d1117; --foreground: #e6edf3; --muted-foreground: #9198a1;
-        --border: #3d444d; --card: #151b23; --card-foreground: #e6edf3; --secondary: #212830;
-        --primary: #4493f8; --info: #4493f8; --warning: #d29922; --warning-surface: #2b2111;
+        --background: #151815;
+        --foreground: #edf0e8;
+        --muted: #bdc8bd;
+        --secondary: #262e27;
+        --border: #859288;
+        --rule: #424c44;
+        --primary: #a3e0c8;
+        --primary-surface: #1f352d;
+        --warning: #ffc0a7;
+        --warning-surface: #382a25;
       }
     }
-    body { background: var(--background); padding: 24px 16px; }
-    .modes {
-      width: 728px;
-      max-width: 100%;
-      margin: 0 auto;
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background-color: var(--background);
       color: var(--foreground);
-      font: 14px/1.38 var(--font-sans, system-ui), sans-serif;
+      font: 1rem/1.5 var(--font-sans);
+      overflow-wrap: break-word;
+    }
+
+    ::selection { background: var(--primary); color: var(--primary-surface); }
+
+    .guide {
+      width: min(100% - 2rem, 60rem);
+      margin-inline: auto;
+      padding-block: 2.75rem;
+    }
+
+    h1, h2, h3, p, ol, ul, dl, dd { margin: 0; }
+
+    h1, h2, .route h3 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    h1 { font-size: clamp(2.75rem, 6.6vw, 4.5rem); line-height: 1; }
+    h2 { font-size: 2.125rem; line-height: 1.1; }
+
+    a { color: var(--primary); text-underline-offset: 0.18em; }
+    a:hover { text-decoration-thickness: 0.13em; }
+
+    :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+
+    code {
+      padding: 0.08em 0.25em;
+      border-radius: 0.2em;
+      background: var(--code-background);
+      font: 0.9em var(--font-mono);
       overflow-wrap: anywhere;
     }
-    .modes h1, .modes h2, .modes h3, .modes p, .modes dl,
-    .modes dd, .modes ol, .modes ul, .modes figure { margin: 0; }
-    .modes h1, .modes h2 {
-      font-size: 23px;
-      line-height: 1.17;
-      font-weight: 720;
-      letter-spacing: -.025em;
-    }
-    .modes h3 { font-size: 15px; line-height: 1.3; }
-    .modes code {
-      font: .94em/1.28 var(--font-mono, ui-monospace), monospace;
-      font-size: max(12px, .94em);
-    }
-    .modes ul, .modes ol { padding: 0; list-style: none; }
-    .modes a { color: inherit; text-underline-offset: .18em; }
-    .modes a:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-    .modes section + section {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-    }
-    .intro { margin-top: 5px !important; color: var(--muted-foreground); }
-    .box {
-      min-width: 0;
-      padding: 16px;
-      border-radius: var(--radius);
-      background: var(--card);
-      color: var(--card-foreground);
-    }
-    .basis {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .basis h3 { margin-bottom: 5px; }
-    .files, .policy, .isolation, .fine { font-size: 12px; }
-    .files { display: grid; gap: 3px; }
-    .policy {
-      display: grid;
-      grid-template-columns: max-content minmax(0, 1fr);
-      gap: 4px 10px;
-    }
-    .policy dt { font-weight: 700; }
-    .isolation { margin-top: 8px !important; }
-    .mode-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
-    .mode-heading code { font-size: inherit; }
-    .mode-heading .subhead { color: var(--muted-foreground); font-size: 13px; }
 
-    .human-map { margin-top: 12px !important; }
-    .human-map li {
-      position: relative;
+    .intro {
+      margin-top: 0.875rem;
+      max-width: 58ch;
+      color: var(--muted);
+      font-size: 1.125rem;
+    }
+
+    .journey { margin-top: 1.75rem; }
+
+    .shared {
       display: grid;
-      grid-template-columns: 182px minmax(0, 1fr);
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: start;
-      gap: 4px 14px;
-      padding: 4px 0 5px 22px;
-      border-left: 1px solid var(--border);
-      margin-left: 5px;
-    }
-    .human-map li::before {
-      content: "";
-      position: absolute;
-      top: 11px;
-      left: -5px;
-      width: 9px;
-      height: 9px;
-      border: 2px solid var(--primary);
-      border-radius: 50%;
-      background: var(--background);
-    }
-    .human-map li.has-gate::before {
-      border-radius: 0;
-      border-color: var(--warning);
-      transform: rotate(45deg);
-    }
-    .human-map .detail { font-size: 13px; }
-    .human-map .risk-options {
-      display: grid;
-      gap: 2px;
-      margin: 4px 0 7px;
-    }
-    .risk-options div { padding-left: 8px; border-left: 1px solid var(--border); }
-    .gate { font-weight: 680; }
-    .gate::before { content: "◆"; color: var(--warning); margin-right: 5px; }
-    .return {
-      color: var(--muted-foreground);
-      margin-left: 5px !important;
-      padding: 4px 0 0 12px;
-      border-left: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .return .arrow { margin-right: 4px; }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 15px;
-      margin: 8px 0 12px !important;
-      font-size: 12px;
-    }
-    .actor { display: inline-flex; align-items: baseline; gap: 6px; }
-    .actor::before {
-      content: "";
-      flex: 0 0 auto;
-      width: 8px;
-      height: 8px;
-      border: 2px solid var(--info);
-      border-radius: 50%;
-    }
-    .actor.claude::before { background: var(--primary); border-color: var(--primary); }
-    .entry {
-      display: flex;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 2px 9px;
-      border-block: 1px solid var(--border);
-      padding: 7px 0;
-      font-size: 13px;
-    }
-    .entry .trigger { font-weight: 720; }
-    .arrow { color: var(--muted-foreground); }
-    .entry-description { color: var(--muted-foreground); }
-    .factory-map {
-      display: grid;
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-      gap: 0 20px;
-    }
-    .lane, .side-lane { min-width: 0; }
-    .stage-top {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 4px 8px;
-      margin-bottom: 6px;
-    }
-    .stage-top .fine { color: var(--muted-foreground); }
-    .stage-copy { font-size: 13px; }
-    .stage-copy + .stage-copy { margin-top: 5px; }
-    .stage-copy + .fine { margin-top: 5px; }
-    .spec-tests { margin-top: 5px !important; }
-    .spec-tests div + div { margin-top: 2px; }
-    .spec-tests dt, .spec-tests dd { display: inline; }
-    .spec-tests dt { font-weight: 680; }
-    .connector {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 3px 0 3px 16px;
-      min-height: 22px;
-      font-size: 12px;
-      color: var(--muted-foreground);
-    }
-    .connector span { font-size: 14px; line-height: 1; }
-    .round-list > li {
-      display: grid;
-      grid-template-columns: 76px minmax(0, 1fr);
-      gap: 4px 8px;
-      padding: 4px 0;
-      border-top: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .round-list .actor { font-weight: 680; }
-    .round-list .arrow { padding-left: 3px; }
-    .retry {
-      padding-top: 6px;
-      margin-top: 3px !important;
-      border-top: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .merge-policies div + div { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 5px; }
-    .merge-policies dt { font-weight: 680; }
-    .merge-policies dd { font-size: 12px; }
-    .report {
-      padding: 5px 0 5px 16px;
-      border-block: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .report .actor { margin-right: 7px; }
-    .branches { padding-top: 22px; }
-    .branches .box + .box { margin-top: 8px; }
-    .branch {
-      background: var(--warning-surface);
-      color: var(--foreground);
-      position: relative;
-    }
-    .branch:first-child::before {
-      content: "";
-      position: absolute;
-      width: 20px;
-      border-top: 1px dashed var(--warning);
-      left: -20px;
-      top: 22px;
-    }
-    .branch:first-child::after {
-      content: "";
-      position: absolute;
-      width: 5px;
-      height: 5px;
-      border-top: 1px solid var(--warning);
-      border-right: 1px solid var(--warning);
-      left: -5px;
-      top: 20px;
-      transform: rotate(45deg);
-    }
-    .branch h3 { margin-bottom: 5px; }
-    .branch .from { color: var(--muted-foreground); margin-bottom: 3px; font-size: 12px; }
-    .branch-steps { margin-top: 6px !important; display: grid; gap: 5px; }
-    .branch-steps .actor, .branch-steps .gate { margin-right: 3px; }
-    .branch-steps .arrow, .retro-flow .arrow { margin-right: 3px; }
-    .retro-flow {
-      margin-top: 8px;
+      gap: 0.875rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
       background: var(--secondary);
-      color: var(--foreground);
     }
-    .retro-flow h3 { margin-bottom: 4px; }
-    .retro-flow .stage-copy { margin-top: 4px; }
-    .limits {
-      margin-top: 9px;
-      padding: 8px 0 0;
+
+    .shared svg {
+      width: 1.5rem;
+      height: 1.5rem;
+      margin-top: 0.125rem;
+      color: var(--muted);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .shared h2 {
+      font: 680 1.4375rem/1.2 var(--font-sans);
+      letter-spacing: -0.015em;
+      text-wrap: initial;
+    }
+
+    .shared p {
+      margin-top: 0.25rem;
+      color: var(--muted);
+    }
+
+    /* Connect the common steps to the center of each lane. */
+    .junction {
+      position: relative;
+      height: 2rem;
+    }
+
+    .junction::before, .junction::after {
+      content: "";
+      position: absolute;
+    }
+
+    .junction::before {
+      inset: 50% calc(25% - 0.25rem) 0;
       border-top: 1px solid var(--border);
+      border-inline: 1px solid var(--border);
     }
-    .limits h3 { margin-bottom: 4px; }
-    .limits ul { display: grid; gap: 3px; font-size: 12px; }
-    .fit {
+
+    .junction::after {
+      inset: 0 50% 50% auto;
+      border-inline-start: 1px solid var(--border);
+    }
+
+    .join { transform: scaleY(-1); }
+
+    .routes {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin-top: 9px;
+      gap: 1rem;
     }
-    .fit h3 { margin-bottom: 5px; }
-    .fit p { font-size: 13px; }
-    .fit p + p { margin-top: 4px; }
 
-    @media (max-width: 560px) {
-      .factory-map { grid-template-columns: minmax(0, 1fr); }
-      .branches { padding-top: 9px; }
-      .branch:first-child::before, .branch:first-child::after { display: none; }
-      .human-map li { grid-template-columns: minmax(0, 1fr); }
+    .route {
+      display: flex;
+      flex-direction: column;
+      padding: 1.375rem;
+      border-radius: var(--radius);
+      color: var(--primary);
+      background: var(--primary-surface);
     }
-    @media (max-width: 420px) {
-      .basis, .fit { grid-template-columns: minmax(0, 1fr); }
+
+    .route--factory { color: var(--warning); background: var(--warning-surface); }
+
+    .route h3 { font-size: clamp(1.875rem, 3.5vw, 2.5rem); line-height: 1.05; text-wrap: initial; }
+    .route-name { margin-top: 0.375rem; font-size: 0.875rem; font-weight: 650; }
+    .route-fit { margin-top: 0.875rem; color: var(--foreground); }
+
+    .route ol {
+      display: grid;
+      gap: 0.625rem;
+      position: relative;
+      margin-block: 1.125rem;
+      padding: 0;
+      list-style: none;
+    }
+
+    .route ol::before {
+      content: "";
+      position: absolute;
+      inset: 0.75rem auto 0.75rem 0.275rem;
+      border-inline-start: 1px solid currentColor;
+    }
+
+    .route li { position: relative; padding-inline-start: 1.25rem; }
+
+    .route li::before {
+      content: "";
+      position: absolute;
+      inset: 0.475rem auto auto 0;
+      width: 0.6rem;
+      height: 0.6rem;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .route li:first-child::before { background: var(--primary-surface); }
+    .route--factory li:first-child::before { background: var(--warning-surface); }
+
+    .route li span { display: block; color: var(--foreground); }
+
+    .handoff {
+      margin-top: auto;
+      padding-top: 0.875rem;
+      border-top: 1px solid color-mix(in srgb, currentColor 36%, transparent);
+      color: var(--foreground);
+    }
+
+    .handoff strong { color: var(--primary); }
+    .route--factory .handoff strong { color: var(--warning); }
+
+    .next {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.875rem;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .next svg {
+      flex: 0 0 1rem;
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .next a { color: inherit; }
+
+    .reference {
+      margin-top: 2.5rem;
+      padding-top: 1.375rem;
+      border-top: 1px solid var(--rule);
+    }
+
+    .reference h2 { margin-bottom: 0.875rem; }
+
+    details { border-bottom: 1px solid var(--rule); }
+
+    summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-block: 0.875rem;
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    summary:hover { color: var(--primary); }
+
+    summary::after {
+      content: "";
+      flex: 0 0 auto;
+      width: 0.55em;
+      height: 0.55em;
+      margin-inline: 0.2em;
+      border: solid currentColor;
+      border-width: 0 1.5px 1.5px 0;
+      transform: translateY(-0.15em) rotate(45deg);
+    }
+
+    details[open] summary::after { transform: translateY(0.15em) rotate(225deg); }
+
+    .notes {
+      max-width: 72ch;
+      padding-bottom: 1.25rem;
+    }
+
+    .notes :is(ol, ul) { padding-inline-start: 1.375rem; }
+    .notes li + li { margin-top: 0.375rem; }
+    .notes h3 { margin: 1.125rem 0 0.375rem; font-size: 1.125rem; }
+    .notes p + p, .notes p + ul { margin-top: 0.5rem; }
+
+    .settings { margin-block: 0.625rem 1rem; }
+    .settings dt { font-weight: 650; }
+    .settings dd { margin-top: 0.125rem; }
+    .settings dd + dt { margin-top: 0.625rem; }
+
+    @media (max-width: 38rem) {
+      .guide { padding-block: 1.75rem; }
+      .shared, .route { padding: 1rem; }
+      .junction { display: none; }
+
+      .routes {
+        position: relative;
+        grid-template-columns: minmax(0, 1fr);
+        padding: 0.75rem 0 0.75rem 1rem;
+      }
+
+      .routes::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        border-inline-start: 1px solid var(--border);
+      }
+
+      .route { position: relative; }
+      .route::before {
+        content: "";
+        position: absolute;
+        inset: 1.95rem 100% auto -1rem;
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    @media print {
+      :root { color-scheme: light; }
+      .guide { width: 100%; padding: 0; }
+      .overview { print-color-adjust: exact; }
+      .route, .shared { break-inside: avoid; }
     }
   </style>
 </head>
 <body>
-<main class="modes" aria-label="Betriebsmodi des Product Workflow Kit, Version 4.0.1">
-  <section aria-labelledby="basis">
-    <h1 id="basis">Gemeinsamer Produktkontext</h1>
-    <p class="intro">Im <code>kickoff</code> wählt ein Mensch den Betriebsmodus und die Agent-Isolation.</p>
-    <div class="basis">
-      <div class="box">
-        <h3>Dateien für beide Modi</h3>
-        <ul class="files" role="list">
-          <li><code>AGENTS.md</code> · Arbeitsvereinbarung</li>
-          <li><code>PRODUCT.md</code> · Ziel, Scope und Rahmen</li>
-          <li><code>DESIGN.md</code> · Designrichtung</li>
-          <li><code>GLOSSARY.md</code> · Domänensprache</li>
-          <li><code>CODING_STANDARDS.md</code> · Regeln fürs Review</li>
-          <li><code>docs/decisions/</code> · Dauerhafte Entscheidungen</li>
-        </ul>
-      </div>
-      <div class="box">
-        <h3>Operating mode in <code>PRODUCT.md</code></h3>
-        <dl class="policy">
-          <dt><code>mode</code></dt><dd><code>human-led</code> / <code>factory</code></dd>
-          <dt><code>autonomy_ceiling</code></dt><dd><code>nano</code> / <code>micro</code> / <code>standard</code></dd>
-          <dt><code>merge</code></dt><dd><code>auto</code> / <code>pr-only</code></dd>
-          <dt><code>deploy</code></dt><dd><code>staging-auto</code> / <code>human</code></dd>
-        </dl>
-        <p class="isolation"><strong>Agent isolation</strong> · <code>none</code>, <code>agent</code> oder <code>container</code> in <code>PRODUCT.md</code>. Factory setzt <code>agent</code> oder <code>container</code> voraus.</p>
-      </div>
-    </div>
-  </section>
+  <main class="guide">
+    <div class="overview">
+      <header>
+        <h1>Product Workflow Kit</h1>
+        <p class="intro">Von der Idee zur geprüften Änderung. Du steuerst die Arbeit selbst oder übergibst klar umrissene Aufgaben an die Factory.</p>
+      </header>
 
-  <section aria-labelledby="human-led">
-    <div class="mode-heading">
-      <h2 id="human-led"><code>human-led</code></h2>
-      <span class="subhead">Ein Mensch entscheidet an jedem Gate. Agents liefern Evidenz.</span>
-    </div>
-    <figure aria-label="Ablauf vom Kickoff bis zum nächsten Slice">
-      <ol class="human-map" role="list">
-        <li>
-          <h3>Kickoff</h3>
-          <p class="detail">Outcome und Rahmen klären, Produktkontext festhalten.</p>
-        </li>
-        <li>
-          <h3 id="slice">Slice als Issue</h3>
-          <p class="detail">Kleinster prüfbarer Schritt mit Scope, Non-Goals und Akzeptanzkriterien.</p>
-        </li>
-        <li class="has-gate">
-          <h3>Risk-Triage</h3>
-          <div class="detail">
-            <strong>Nur bei Bedarf</strong>
-            <div class="risk-options">
-              <div><code>requirements-quality</code> · unklare oder folgenreiche Anforderungen</div>
-              <div><code>product-design</code> · relevantes UX- oder Accessibility-Risiko</div>
-              <div><code>docs/decisions/</code> · Entscheidungen, die über das Issue hinaus gelten</div>
-            </div>
-            <p class="gate">Human gate bei folgenreichen Entscheidungen</p>
+      <section class="journey" aria-label="Der Ablauf in beiden Arbeitsmodi">
+        <div class="shared" id="auftrag">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h3"/></svg>
+          <div>
+            <h2>Ziel klären und Arbeit zuschneiden</h2>
+            <p>Was soll sich für wen verbessern? Halte die kleinste prüfbare Änderung mit Akzeptanzkriterien fest.</p>
           </div>
-        </li>
-        <li>
-          <h3>Build</h3>
-          <p class="detail"><code>feature</code> setzt den Slice um. Der PR bleibt am Issue ausgerichtet.</p>
-        </li>
-        <li class="has-gate">
-          <h3>Verify &amp; Release</h3>
-          <div class="detail">
-            <p><code>quality-release</code> belegt die Kriterien und den Rollback-Pfad. Der Review prüft <strong>Spec</strong> gegen das Issue und <strong>Standards</strong> gegen <code>CODING_STANDARDS.md</code>.</p>
-            <p class="gate">Human gates für Release-Freigabe und Production-Deployment</p>
-          </div>
-        </li>
-        <li>
-          <h3>Learn</h3>
-          <p class="detail">Bei Produktwirkung folgt der Outcome-Check mit Signal, Messfenster, Verantwortlichem und einer Entscheidung über Iterieren, Skalieren, Stoppen oder Untersuchen.</p>
-        </li>
-        <li>
-          <h3><code>retro</code></h3>
-          <p class="detail">Bei Reibung oder wiederkehrenden Befunden Checks, Standards oder Kontext verbessern.</p>
-        </li>
-      </ol>
-      <figcaption class="return"><span class="arrow" aria-hidden="true">↶</span> <a href="#slice">Zum nächsten Slice mit <code>feature</code></a></figcaption>
-    </figure>
-  </section>
+        </div>
 
-  <section aria-labelledby="factory">
-    <div class="mode-heading">
-      <h2 id="factory"><code>factory</code></h2>
-      <span class="subhead">GitHub Actions · <code>factory.yml</code> · <code>factory-run</code></span>
-    </div>
-    <ul class="legend" aria-label="Rollen im Factory-Ablauf" role="list">
-      <li><span class="actor claude">Claude-Agent</span></li>
-      <li><span class="actor">Workflow · deterministisch</span></li>
-      <li><span class="gate">Human gate</span></li>
-    </ul>
+        <div class="junction" aria-hidden="true"></div>
 
-    <figure aria-label="Factory-Ablauf mit Rework, Eskalation, Zerlegung und Retro">
-      <div class="entry">
-        <code class="trigger">factory:ready</code>
-        <span class="arrow" aria-hidden="true">→</span>
-        <strong class="actor"><code id="route">route</code></strong>
-        <span class="entry-description">Übernimmt das Issue als <code>factory:running</code>.</span>
-      </div>
-
-      <div class="factory-map">
-        <div class="lane">
-          <div class="connector" aria-hidden="true"><span>↓</span></div>
-          <div class="box">
-            <div class="stage-top">
-              <h3 class="actor claude"><code>spec</code></h3>
-              <span class="fine">Risk-Triage und Tests</span>
-            </div>
-            <div class="stage-copy">
-              <p>Claude schätzt das Risiko ein und schreibt Tests. Der Workflow liest vorab Modus und Ceiling und prüft die gemeldete Risikostufe.</p>
-              <dl class="spec-tests">
-                <div><dt>Sichtbar</dt> <dd><code>tests/acceptance/</code> geht in den Branch.</dd></div>
-                <div><dt>Versteckt</dt> <dd><code>tests/holdout/</code> bleibt als Artefakt für <code>verify</code> und <code>review</code>.</dd></div>
-              </dl>
-            </div>
-          </div>
-
-          <div class="connector"><span aria-hidden="true">↓</span> <code>spec</code> gibt frei</div>
-          <div class="box">
-            <div class="stage-top">
-              <h3>Runden 1–3 im selben Lauf</h3>
-              <span class="fine"><code>factory-round.yml</code></span>
-            </div>
-            <ol class="round-list" role="list">
-              <li>
-                <strong class="actor claude"><code>build</code></strong>
-                <span>Implementiert gegen sichtbare Tests und öffnet oder aktualisiert den PR.</span>
-              </li>
-              <li>
-                <strong class="actor"><code>verify</code></strong>
-                <span>Prüft Pfade, Manifeste und Akzeptanztests. Führt Checks erst ohne, dann mit Holdout-Tests aus.</span>
-              </li>
-              <li>
-                <strong class="actor claude"><code>review</code></strong>
-                <span>Prüft unabhängig mit frischem Kontext auf <strong>Spec</strong> und <strong>Standards</strong>.</span>
-              </li>
+        <div class="routes">
+          <section class="route" aria-labelledby="human-led">
+            <h3 id="human-led">Du führst</h3>
+            <p class="route-name">Human-led · Standardmodus</p>
+            <p class="route-fit">Passt bei offener Richtung, erhöhtem Risiko oder fehlenden automatisierten Tests.</p>
+            <ol role="list">
+              <li><strong>Offene Fragen klären</strong><span>Du klärst Anforderungen und triffst Entscheidungen mit größeren Folgen.</span></li>
+              <li><strong>Änderung umsetzen</strong><span>Agents bauen im vereinbarten Rahmen und prüfen die Änderung anhand der Kriterien.</span></li>
+              <li><strong>Änderung freigeben</strong><span>Du sichtest die Prüfergebnisse und entscheidest über die Freigabe.</span></li>
             </ol>
-            <p class="retry"><span class="arrow" aria-hidden="true">↶</span> <strong>Bei behebbaren Verify- oder Review-Fails</strong> startet die nächste Runde am selben PR mit Findings aus dem Issue. Am Rework-Limit übernimmt ein Mensch.</p>
-          </div>
+            <p class="handoff"><strong>Auch in der Factory gilt Human-led</strong> für interaktive Arbeit mit Agents.</p>
+          </section>
 
-          <div class="connector"><span aria-hidden="true">↓</span> <code>verify</code> und <code>review</code> bestanden</div>
-          <div class="box">
-            <div class="stage-top"><h3 class="actor"><code>merge</code></h3></div>
-            <dl class="merge-policies">
-              <div>
-                <dt class="gate"><code>merge: pr-only</code></dt>
-                <dd>PR geht mit <code>factory:human-review</code> an einen Menschen.</dd>
-              </div>
-              <div>
-                <dt><code>merge: auto</code></dt>
-                <dd>Wartet auf alle konfigurierten <code>FACTORY_REQUIRED_CHECKS</code> und squash-mergt den geprüften Commit. Mit <code>deploy: staging-auto</code> startet der konfigurierte Staging-Workflow.</dd>
-              </div>
-            </dl>
-          </div>
+          <section class="route route--factory" aria-labelledby="factory">
+            <h3 id="factory">Die Factory setzt um</h3>
+            <p class="route-name">Factory · Automatisierter Modus</p>
+            <p class="route-fit">Passt bei klarer Richtung, vielen kleinen Aufgaben und verlässlichen automatisierten Tests.</p>
+            <ol role="list">
+              <li><strong>Aufgabe übergeben</strong><span>Du markierst die Aufgabe. Die Factory prüft, ob sie in ihren Spielraum passt.</span></li>
+              <li><strong>Bauen und prüfen</strong><span>Die Factory schreibt Tests, baut die Änderung und lässt sie unabhängig prüfen.</span></li>
+              <li><strong>Änderung übernehmen</strong><span>Je nach Einstellung übernimmt die Factory die geprüfte Änderung oder legt sie dir vor.</span></li>
+            </ol>
+            <p class="handoff"><strong>Offene Entscheidungen bleiben bei dir.</strong> Die Factory stoppt und fragt nach.</p>
+          </section>
+        </div>
 
-          <div class="connector" aria-hidden="true"><span>↓</span></div>
-          <div class="report">
-            <strong class="actor"><code>report</code></strong>
-            Setzt Labels und kommentiert das Ergebnis, auch bei einem Stopp.
+        <div class="junction join" aria-hidden="true"></div>
+
+        <div class="shared">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4v16h16M8 15l4-4 3 2 5-6"/><path d="M16 7h4v4"/></svg>
+          <div>
+            <h2>Veröffentlichen und Wirkung prüfen</h2>
+            <p>In beiden Modi entscheidet ein Mensch über den Einsatz in Produktion und prüft, ob die Änderung die gewünschte Wirkung erzielt.</p>
           </div>
         </div>
 
-        <div class="side-lane">
-          <aside class="branches" aria-label="Abzweigungen bei einem Stopp">
-            <div class="box branch">
-              <p class="from">Aus <code>spec</code> oder <code>build</code></p>
-              <h3>Stopp mit Fragerunde</h3>
-              <p class="stage-copy">Bei offenen Entscheidungen postet <code>report</code> nummerierte Fragen mit Empfehlungen und ggf. Optionen. Das Issue erhält <code>factory:needs-human</code>.</p>
-              <p class="stage-copy"><span class="gate">Antwort im Issue</span> <span class="arrow" aria-hidden="true">↶</span> Über <a href="#route"><code>route</code></a> läuft <code>spec</code> neu, mit der Antwort als Vorgabe.</p>
-            </div>
-            <div class="box branch">
-              <p class="from">Aus <code>spec</code> · <code>factory:needs-human</code></p>
-              <h3>Stopp nur wegen Größe</h3>
-              <p class="stage-copy">Claude schlägt 2–8 vertikale Slices vor, die einzeln ins Ceiling passen.</p>
-              <ol class="branch-steps stage-copy" role="list">
-                <li><span class="gate"><code>yes</code></span> im Issue bestätigt den Plan.</li>
-                <li><strong class="actor"><code>decompose</code></strong> erstellt Sub-Issues mit <code>blocked-by</code>-Links. Das Parent-Issue erhält <code>factory:decomposed</code>.</li>
-                <li><strong class="actor"><code>next.sh</code></strong> startet nach einem Merge den nächsten freien Teil. Jeder Teil hat eigene <code>spec</code>, Runden und Merge.</li>
-                <li><span class="arrow" aria-hidden="true">↳</span> Sind alle Teile geschlossen, schließt <code>next.sh</code> den Parent, auch wenn ein Mensch den letzten Teil gemergt hat.</li>
-              </ol>
-            </div>
-          </aside>
-          <div class="box retro-flow">
-            <h3><span class="arrow" aria-hidden="true">↳</span> Retro nach dem Merge</h3>
-            <p class="stage-copy">Nach je <code>FACTORY_RETRO_EVERY</code> Factory-PR-Merges (Standard 10) prüft der Workflow, ob ein Retro ansteht. Manuelle Merges zählen mit; solange ein Retro-PR offen ist, pausiert sie.</p>
-            <p class="stage-copy"><span class="actor claude"><code>retro</code></span> schlägt bis zu drei belegte Verbesserungen vor. <span class="arrow" aria-hidden="true">→</span> <span class="gate">Ein Mensch entscheidet über den PR</span> mit Label <code>factory:retro</code>.</p>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <aside class="limits" aria-labelledby="limits">
-      <h3 id="limits">Feste Grenzen</h3>
-      <ul role="list">
-        <li><span class="gate">Production und der Outcome-Check bleiben menschlich.</span> Interaktive Sessions folgen immer <code>human-led</code>.</li>
-        <li><strong>Geschützte Pfade</strong> umfassen u. a. <code>.github/</code>, <code>.factory/</code>, Agent-Konfiguration, Produktkontext und <code>docs/decisions/</code>. <code>verify</code> blockiert auch Änderungen an Dependency-Manifesten und Lockfiles.</li>
-        <li><strong><code>context.sh</code></strong> filtert menschliche Kommentare auf Personen mit Schreibrechten. Kommentare der Factory gehören ebenfalls zum Issue-Kontext.</li>
-      </ul>
-    </aside>
-  </section>
-
-  <section aria-labelledby="fit">
-    <h2 id="fit">Wann welcher Modus?</h2>
-    <div class="fit">
-      <div class="box">
-        <h3><code>human-led</code></h3>
-        <p>Standard bei neuer oder unklarer Produktrichtung, personenbezogenen Daten, Geld oder fehlender automatisierter Testsuite.</p>
-      </div>
-      <div class="box">
-        <h3><code>factory</code></h3>
-        <p>Klare Produktrichtung, verlässliche automatisierte Tests und viele kleine, gut spezifizierte Änderungen.</p>
-        <p>Der <code>kickoff</code> empfiehlt den Einstieg mit <code>micro</code> und <code>merge: pr-only</code>.</p>
-      </div>
+        <p class="next">
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M7 5 3 9l4 4M3 9h10a4 4 0 0 1 0 8h-2"/></svg>
+          <a href="#auftrag">Mit diesen Erkenntnissen die nächste Änderung planen</a>
+        </p>
+      </section>
     </div>
-  </section>
-</main>
+
+    <section class="reference" aria-labelledby="details">
+      <h2 id="details">Technische Details</h2>
+
+      <details>
+        <summary>Produktkontext und Einstellungen</summary>
+        <div class="notes">
+          <p>Im <code>kickoff</code> wählst du Arbeitsmodus und Agent-Isolation. Die interaktiven Sessions folgen in beiden Modi den Regeln von <code>human-led</code>.</p>
+          <h3>Ein gemeinsamer Produktkontext</h3>
+          <ul>
+            <li><code>AGENTS.md</code> hält die Arbeitsvereinbarung fest, <code>PRODUCT.md</code> das Produktziel und den Rahmen.</li>
+            <li><code>DESIGN.md</code> beschreibt die Designrichtung. <code>GLOSSARY.md</code> sammelt Begriffe aus der Domäne.</li>
+            <li><code>CODING_STANDARDS.md</code> gibt Regeln für das Review vor. In <code>docs/decisions/</code> stehen Entscheidungen, die über ein Issue hinaus gelten.</li>
+          </ul>
+          <h3>Einstellungen in <code>PRODUCT.md</code></h3>
+          <dl class="settings">
+            <dt><code>mode</code></dt>
+            <dd><code>human-led</code> oder <code>factory</code></dd>
+            <dt><code>autonomy_ceiling</code></dt>
+            <dd>Maximaler Spielraum der Factory mit <code>nano</code>, <code>micro</code> oder <code>standard</code></dd>
+            <dt><code>merge</code></dt>
+            <dd>Nach erfolgreichen Prüfungen automatisch zusammenführen (<code>auto</code>) oder den Pull Request zur menschlichen Prüfung übergeben (<code>pr-only</code>)</dd>
+            <dt><code>deploy</code></dt>
+            <dd>Automatisch auf Staging ausrollen (<code>staging-auto</code>) oder Menschen überlassen (<code>human</code>)</dd>
+          </dl>
+          <p>Die Agent-Isolation kennt <code>none</code>, <code>agent</code> und <code>container</code>. Die Factory setzt <code>agent</code> oder <code>container</code> sowie die <a href="https://github.com/andreasspiegler/product-workflow-kit/blob/main/templates/factory/README.md#one-time-setup">einmalige Einrichtung in GitHub</a> voraus. Der <code>kickoff</code> empfiehlt für den Einstieg <code>micro</code> und <code>merge: pr-only</code>.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Human-led im Detail</summary>
+        <div class="notes">
+          <ol>
+            <li><strong>Aufgabe schneiden.</strong> Das Issue hält fest, was zur Änderung gehört, was außerhalb ihres Rahmens liegt und woran man erkennt, dass sie fertig ist.</li>
+            <li><strong>Risiko einschätzen.</strong> Bei unklaren oder folgenreichen Anforderungen hilft <code>requirements-quality</code>. Bei relevanten UX- oder Barrierefreiheitsrisiken hilft <code>product-design</code>. Dauerhafte Entscheidungen landen in <code>docs/decisions/</code>. Folgenschwere Entscheidungen trifft ein Mensch.</li>
+            <li><strong>Umsetzen.</strong> <code>feature</code> setzt die kleinstmögliche Änderung um. Der Pull Request bleibt am Issue ausgerichtet.</li>
+            <li><strong>Prüfen und freigeben.</strong> <code>quality-release</code> belegt die Akzeptanzkriterien und beschreibt den Weg zurück, falls die Änderung Probleme macht. Das Review prüft gegen Issue und Coding-Standards. Ein Mensch entscheidet über Release und Einsatz in Produktion.</li>
+            <li><strong>Wirkung auswerten.</strong> Für Änderungen mit erwarteter Produktwirkung vereinbarst du ein Messsignal, ein Zeitfenster und eine verantwortliche Person. Danach entscheidest du, ob du weiter daran arbeitest, die Änderung ausweitest, stoppst oder genauer hinschaust.</li>
+            <li><strong>Arbeitsweise verbessern.</strong> Bei Reibung oder wiederkehrenden Befunden hilft <code>retro</code>, Checks, Standards oder Produktkontext zu verbessern. Mit <code>feature</code> geht es zur nächsten Änderung.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary>Factory im Detail</summary>
+        <div class="notes">
+          <p>GitHub Actions führt die Factory mit <code>factory.yml</code> und dem Skill <code>factory-run</code> aus.</p>
+          <h3>Vom Issue zum geprüften Pull Request</h3>
+          <ol>
+            <li><code>route</code> übernimmt ein Issue mit <code>factory:ready</code> und markiert es als <code>factory:running</code>.</li>
+            <li>Der Workflow liest Modus und Autonomiegrenze. Claude schätzt in <code>spec</code> das Risiko ein und schreibt sichtbare Akzeptanztests (<code>tests/acceptance/</code>) und versteckte Tests (<code>tests/holdout/</code>). Die versteckten Tests bleiben für <code>verify</code> und <code>review</code> im Lauf verfügbar.</li>
+            <li>Claude setzt in <code>build</code> das Issue anhand der sichtbaren Tests um und öffnet oder aktualisiert den Pull Request. <code>verify</code> blockiert Änderungen an geschützten Pfaden, Akzeptanztests, Dependency-Manifesten und Lockfiles. Der Workflow führt Checks zuerst ohne und dann mit den versteckten Tests aus. In <code>review</code> prüft Claude mit frischem Kontext gegen Issue und Standards.</li>
+            <li>Bei behebbaren Prüffehlern folgt mit den Befunden eine weitere Runde am selben Pull Request. Standardmäßig gibt es bis zu zwei Nachbesserungen. Wenn das Limit erreicht ist, übernimmt ein Mensch.</li>
+            <li>Nach bestandener Prüfung übergibt <code>merge: pr-only</code> den Pull Request mit <code>factory:human-review</code>. Bei <code>merge: auto</code> wartet der Workflow auf die konfigurierten <code>FACTORY_REQUIRED_CHECKS</code> und übernimmt genau den geprüften Commit per Squash-Merge. Mit <code>deploy: staging-auto</code> startet anschließend der konfigurierte Staging-Workflow. <code>report</code> dokumentiert das Ergebnis über Labels und einen Kommentar, auch bei einem Stopp.</li>
+          </ol>
+
+          <h3>Wenn die Factory stoppt</h3>
+          <ul>
+            <li><strong>Eine Entscheidung fehlt.</strong> Wenn <code>spec</code> oder <code>build</code> eine Entscheidung braucht, markiert <code>report</code> das Issue mit <code>factory:needs-human</code> und stellt nummerierte Fragen mit Empfehlungen und ggf. Optionen. Nach einer Antwort läuft <code>spec</code> mit der Antwort als Vorgabe erneut.</li>
+            <li><strong>Die Aufgabe ist zu groß.</strong> Wenn nur die Größe den Rahmen sprengt, schlägt Claude zwei bis acht einzeln prüfbare Teilschritte vor. Nach einem <code>yes</code> erstellt <code>decompose</code> Sub-Issues mit Abhängigkeiten und setzt am Eltern-Issue <code>factory:decomposed</code>. <code>next.sh</code> startet nach jedem Merge den nächsten freien Teil und schließt das Eltern-Issue, sobald alle Teile geschlossen sind. Menschliche Merges zählen mit.</li>
+          </ul>
+
+          <h3>Was die Factory ändern und lesen kann</h3>
+          <p>Geschützt sind unter anderem <code>.github/</code>, <code>.factory/</code>, Agent-Konfiguration, Produktkontext und <code>docs/decisions/</code>. <code>context.sh</code> gibt den Agents das Issue, Kommentare von Menschen mit Schreibrechten und Kommentare der Factory.</p>
+
+          <h3>Retro nach dem Merge</h3>
+          <p>Standardmäßig nach jedem zehnten Factory-Merge, einschließlich menschlicher Merges, kann <code>retro</code> bis zu drei belegte Verbesserungen in einem Pull Request mit <code>factory:retro</code> vorschlagen. <code>FACTORY_RETRO_EVERY</code> steuert das Intervall. Solange ein Retro-Pull-Request offen ist, wartet die Automatik. Ein Mensch entscheidet über den Vorschlag.</p>
+          <p><a href="https://github.com/andreasspiegler/product-workflow-kit/blob/main/templates/factory/README.md">Factory-Referenz mit Setup und Grenzen</a></p>
+        </div>
+      </details>
+    </section>
+  </main>
 </body>
 </html>

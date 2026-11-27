@@ -72,7 +72,14 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04+ runners restrict unprivileged user namespaces through AppArmor.
+          # The bwrap-userns-restrict profile strips the capabilities that Claude Code's
+          # seccomp helper needs inside bwrap. This VM is disposable, so lift both limits.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
 
       - name: Prepare the toolchain
         run: .factory/setup.sh
@@ -150,7 +157,14 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04+ runners restrict unprivileged user namespaces through AppArmor.
+          # The bwrap-userns-restrict profile strips the capabilities that Claude Code's
+          # seccomp helper needs inside bwrap. This VM is disposable, so lift both limits.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
 
       - name: Prepare the toolchain
         run: .factory/setup.sh
@@ -251,7 +265,14 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04+ runners restrict unprivileged user namespaces through AppArmor.
+          # The bwrap-userns-restrict profile strips the capabilities that Claude Code's
+          # seccomp helper needs inside bwrap. This VM is disposable, so lift both limits.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          if [[ -f /etc/apparmor.d/bwrap-userns-restrict ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
 
       - name: Review independently
         id: claude
@@ -289,6 +310,8 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
+      checks: read
+      statuses: read
     outputs:
       outcome: ${{ steps.merge.outputs.outcome }}
       note: ${{ steps.merge.outputs.note }}
@@ -381,3 +404,7 @@ jobs:
           fi
           gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label factory:running --add-label "$label"
           printf '**Factory:** %s\n\nRun: %s\n' "$body" "$RUN_URL" | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -
+          # Closing keywords do not fire for merges made with the workflow token.
+          if [[ "$label" == factory:merged ]]; then
+            gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY" --reason completed
+          fi

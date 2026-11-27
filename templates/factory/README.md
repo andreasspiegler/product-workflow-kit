@@ -44,5 +44,5 @@ Use the factory in private repositories, or where only trusted people write issu
 ## Known limits
 
 - The acceptance tests are fixed before implementation and protected from change, but the build stage can read them. They are a contract, not a hidden holdout set; the independent review checks for implementations that only satisfy the tests.
-- The Claude Code sandbox on the runner needs `bubblewrap` and `socat`, which the workflow installs. If it cannot start, the run fails and the issue is escalated; check the first run's log.
+- The Claude Code sandbox on the runner needs `bubblewrap` and `socat` and, on Ubuntu 24.04 and later, relaxed AppArmor user-namespace rules. The workflow installs and relaxes these on the disposable runner VM. If the sandbox still cannot start, Claude cannot run any command and escalates; check that run's log.
 - The factory decides only as well as the acceptance criteria and checks allow. Outcome learning after release stays with a human.

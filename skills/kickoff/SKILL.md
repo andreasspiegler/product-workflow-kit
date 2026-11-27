@@ -23,7 +23,7 @@ If a repository already exists, read its `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`,
 - the environments needed (local, staging, production) and where secrets will live;
 - whether GitHub is the desired work tracker and where the product should live.
 
-Do not invent a target user, a business case, a stack, or a deployment platform.
+Ask for what is missing in rounds, as the `requirements-quality` skill describes: numbered questions, each with a recommended answer. Do not invent a target user, a business case, a stack, or a deployment platform.
 
 ## 2. Establish portable context
 
@@ -60,7 +60,9 @@ Ask once who resolves the human gates in day-to-day work, unless `PRODUCT.md` al
 | `human-led` | A person decides at every gate; agents create evidence. | Default. New or uncertain product direction, personal data or money involved, or no automated test suite yet. |
 | `factory` | A GitHub Actions workflow specifies, builds, verifies, independently reviews, and merges issues labelled `factory:ready`, up to an autonomy ceiling, and can deploy to staging. Everything above the ceiling comes back to a person. | The product direction is settled, the stack has a reliable automated test suite, and many small, well-specified changes are expected. |
 
-For `factory`, agree on four values and record them as separate lines under "Operating mode" in `PRODUCT.md`: `mode: factory`; `autonomy_ceiling` (`nano`, `micro`, or `standard`; recommend `micro` to start); `merge` (`auto` or `pr-only`); `deploy` (`staging-auto` or `human`). Production deployment always stays human. Factory mode needs agent isolation at level `agent` or `container` first. Install it with `scripts/add-factory.sh --target <product>` from the kit checkout (`install.sh --mode factory` does the same at install time), then walk the user through the one-time setup in `.factory/README.md`: GitHub App, secret, labels, `.factory/setup.sh` and `.factory/check.sh`, and the staging workflow. Creating labels, secrets, or repository variables are external changes and need approval.
+For `factory`, agree on four values and record them as separate lines under "Operating mode" in `PRODUCT.md`: `mode: factory`; `autonomy_ceiling` (`nano`, `micro`, or `standard`; recommend `micro` to start); `merge` (`auto` or `pr-only`); `deploy` (`staging-auto` or `human`). Production deployment always stays human.
+
+Recommend starting slow: `merge: pr-only` with a person reviewing every factory pull request. Each problem that review catches becomes a new automated check or a rule in `CODING_STANDARDS.md`, so the factory's own brakes get sharper. Suggest `merge: auto` only after several consecutive factory pull requests (for example five) passed human review without material findings, and raise the ceiling the same way, one step at a time. Factory mode needs agent isolation at level `agent` or `container` first. Install it with `scripts/add-factory.sh --target <product>` from the kit checkout (`install.sh --mode factory` does the same at install time), then walk the user through the one-time setup in `.factory/README.md`: GitHub App, secret, labels, `.factory/setup.sh` and `.factory/check.sh`, and the staging workflow. Creating labels, secrets, or repository variables are external changes and need approval.
 
 Name the limits honestly: the factory decides only as well as the acceptance criteria and checks allow; its hidden tests catch implementations tailored to the visible ones, but not requirements nobody wrote down; and the issue body reaches the agents as input, so use it where you trust the people who write issues. Comments from people without write access are filtered out.
 

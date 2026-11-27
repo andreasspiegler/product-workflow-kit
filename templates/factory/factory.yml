@@ -59,7 +59,7 @@ jobs:
        contains(github.event.issue.labels.*.name, 'factory:needs-human') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
        github.event.comment.user.type != 'Bot')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: write
@@ -106,7 +106,7 @@ jobs:
   spec:
     needs: route
     if: needs.route.outputs.mode == 'start' || needs.route.outputs.mode == 'answer'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: write
@@ -116,9 +116,7 @@ jobs:
     outputs:
       proceed: ${{ steps.decide.outputs.proceed }}
       reason: ${{ steps.decide.outputs.reason }}
-      question: ${{ steps.decide.outputs.question }}
-      options: ${{ steps.decide.outputs.options }}
-      recommendation: ${{ steps.decide.outputs.recommendation }}
+      questions: ${{ steps.decide.outputs.questions }}
       acceptance_tree: ${{ steps.decide.outputs.acceptance_tree }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -179,7 +177,7 @@ jobs:
             --add-dir ${{ runner.temp }}/factory-context
             --allowedTools "Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD)"
             --disallowedTools "Bash(gh:*),Bash(git push --force:*),Bash(git push -f:*)"
-            --json-schema '{"type":"object","properties":{"proceed":{"type":"boolean"},"risk":{"type":"string","enum":["nano","micro","standard","large"]},"reason":{"type":"string"},"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["proceed","risk","reason"]}'
+            --json-schema '{"type":"object","properties":{"proceed":{"type":"boolean"},"risk":{"type":"string","enum":["nano","micro","standard","large"]},"reason":{"type":"string"},"questions":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["question","recommendation"]}}},"required":["proceed","risk","reason"]}'
 
       - name: Decide deterministically whether to proceed
         id: decide
@@ -219,9 +217,7 @@ jobs:
           {
             echo "proceed=$proceed"
             echo "reason<<$delimiter"; echo "$reason"; echo "$delimiter"
-            echo "question<<$delimiter"; jq -r '.question // ""' <<<"$result"; echo "$delimiter"
-            echo "recommendation<<$delimiter"; jq -r '.recommendation // ""' <<<"$result"; echo "$delimiter"
-            echo "options=$(jq -c '.options // []' <<<"$result")"
+            echo "questions=$(jq -c '.questions // []' <<<"$result")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Keep the hidden tests out of the build stage
@@ -238,7 +234,7 @@ jobs:
     if: >-
       always() &&
       ((needs.spec.result == 'success' && needs.spec.outputs.proceed == 'true') || needs.route.outputs.mode == 'rework')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 60
     permissions:
       contents: write
@@ -248,9 +244,7 @@ jobs:
     outputs:
       pr: ${{ steps.pr.outputs.pr }}
       reason: ${{ steps.pr.outputs.reason }}
-      question: ${{ steps.pr.outputs.question }}
-      options: ${{ steps.pr.outputs.options }}
-      recommendation: ${{ steps.pr.outputs.recommendation }}
+      questions: ${{ steps.pr.outputs.questions }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -295,7 +289,7 @@ jobs:
             --add-dir ${{ runner.temp }}/factory-context
             --allowedTools "Bash(.factory/check.sh),Bash(git add:*),Bash(git commit:*),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr edit:*)"
             --disallowedTools "Edit(./tests/acceptance/**),Write(./tests/acceptance/**),Bash(gh issue:*),Bash(gh api:*),Bash(gh pr view:*),Bash(gh pr merge:*),Bash(gh run:*),Bash(git push --force:*),Bash(git push -f:*)"
-            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["opened","updated","blocked"]},"reason":{"type":"string"},"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["status","reason"]}'
+            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["opened","updated","blocked"]},"reason":{"type":"string"},"questions":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"string"}},"recommendation":{"type":"string"}},"required":["question","recommendation"]}}},"required":["status","reason"]}'
 
       - name: Find the pull request
         id: pr
@@ -307,9 +301,7 @@ jobs:
           delimiter="EOF_$(openssl rand -hex 8)"
           {
             echo "reason<<$delimiter"; jq -r '.reason // "The build stage returned no result."' <<<"$result"; echo "$delimiter"
-            echo "question<<$delimiter"; jq -r '.question // ""' <<<"$result"; echo "$delimiter"
-            echo "recommendation<<$delimiter"; jq -r '.recommendation // ""' <<<"$result"; echo "$delimiter"
-            echo "options=$(jq -c '.options // []' <<<"$result")"
+            echo "questions=$(jq -c '.questions // []' <<<"$result")"
           } >> "$GITHUB_OUTPUT"
           case "$(jq -r '.status // "blocked"' <<<"$result")" in
             opened|updated) ;;
@@ -322,7 +314,7 @@ jobs:
   verify:
     needs: [route, spec, build]
     if: always() && needs.build.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -353,7 +345,7 @@ jobs:
             || problems+="tests/acceptance/ changed after the spec stage. "
           [[ -z "$(git diff --name-only --diff-filter=MDRT "origin/$BASE...HEAD" -- tests/acceptance)" ]] \
             || problems+="Existing acceptance tests were changed or removed. "
-          protected='^(\.github/|\.claude/|\.agents/|\.opencode/|\.devcontainer/|\.factory/|docs/decisions/|tests/holdout/|AGENTS\.md$|CLAUDE\.md$|PRODUCT\.md$|DESIGN\.md$|\.env)'
+          protected='^(\.github/|\.claude/|\.agents/|\.opencode/|\.devcontainer/|\.factory/|docs/decisions/|tests/holdout/|AGENTS\.md$|CLAUDE\.md$|PRODUCT\.md$|DESIGN\.md$|GLOSSARY\.md$|CODING_STANDARDS\.md$|\.env)'
           manifests='(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|pyproject\.toml|uv\.lock|poetry\.lock|Pipfile(\.lock)?|requirements[^/]*\.txt|composer\.(json|lock)|Gemfile(\.lock)?|go\.(mod|sum)|Cargo\.(toml|lock))$'
           hits="$(git diff --name-only "origin/$BASE...HEAD" | grep -E "$protected|$manifests${EXTRA:+|$EXTRA}" || true)"
           [[ -z "$hits" ]] || problems+="These changes need a person: $(tr '\n' ' ' <<<"$hits")"
@@ -424,7 +416,7 @@ jobs:
   review:
     needs: [route, spec, build, verify]
     if: always() && needs.verify.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -521,7 +513,7 @@ jobs:
   merge:
     needs: [route, spec, build, verify, review]
     if: always() && needs.review.result == 'success' && needs.review.outputs.verdict == 'pass'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
       contents: write
@@ -577,7 +569,7 @@ jobs:
   report:
     needs: [route, spec, build, verify, review, merge]
     if: always() && needs.route.result == 'success' && needs.route.outputs.mode != 'none'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.FACTORY_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       issues: write
@@ -593,14 +585,10 @@ jobs:
           SPEC_RESULT: ${{ needs.spec.result }}
           SPEC_PROCEED: ${{ needs.spec.outputs.proceed }}
           SPEC_REASON: ${{ needs.spec.outputs.reason }}
-          SPEC_QUESTION: ${{ needs.spec.outputs.question }}
-          SPEC_OPTIONS: ${{ needs.spec.outputs.options }}
-          SPEC_RECOMMENDATION: ${{ needs.spec.outputs.recommendation }}
+          SPEC_QUESTIONS: ${{ needs.spec.outputs.questions }}
           BUILD_RESULT: ${{ needs.build.result }}
           BUILD_REASON: ${{ needs.build.outputs.reason }}
-          BUILD_QUESTION: ${{ needs.build.outputs.question }}
-          BUILD_OPTIONS: ${{ needs.build.outputs.options }}
-          BUILD_RECOMMENDATION: ${{ needs.build.outputs.recommendation }}
+          BUILD_QUESTIONS: ${{ needs.build.outputs.questions }}
           VERIFY_RESULT: ${{ needs.verify.result }}
           VERIFY_SUMMARY: ${{ needs.verify.outputs.summary }}
           REVIEW_RESULT: ${{ needs.review.result }}
@@ -614,16 +602,16 @@ jobs:
           ACCEPTANCE_TREE: ${{ needs.spec.outputs.acceptance_tree || inputs.acceptance_tree }}
           HOLDOUT_RUN: ${{ inputs.holdout_run || github.run_id }}
         run: |
-          label=factory:needs-human; marker=stopped; body=""; question=""; options="[]"; recommendation=""
+          label=factory:needs-human; marker=stopped; body=""; questions="[]"
           rework=""
           if [[ "$MODE" != rework && "$SPEC_RESULT" != success ]]; then
             body="The spec stage failed before a decision. See the run log."
           elif [[ "$MODE" != rework && "$SPEC_PROCEED" != true ]]; then
             body="Stopped in the spec stage: $SPEC_REASON"
-            question="$SPEC_QUESTION"; options="${SPEC_OPTIONS:-[]}"; recommendation="$SPEC_RECOMMENDATION"
+            questions="${SPEC_QUESTIONS:-[]}"
           elif [[ "$BUILD_RESULT" != success ]]; then
             body="The build stage stopped: ${BUILD_REASON:-see the run log.}"
-            question="$BUILD_QUESTION"; options="${BUILD_OPTIONS:-[]}"; recommendation="$BUILD_RECOMMENDATION"
+            questions="${BUILD_QUESTIONS:-[]}"
           elif [[ "$VERIFY_RESULT" != success ]]; then
             rework="$VERIFY_SUMMARY"
           elif [[ "$REVIEW_RESULT" != success ]]; then
@@ -652,11 +640,16 @@ jobs:
             body="$(printf 'Pull request #%s did not pass after %s round(s). It stays open for you to decide. Last findings:\n\n%s' "$PR" "$ROUND" "$rework")"
           fi
 
-          if [[ -n "$question" ]]; then
+          if [[ "$(jq 'length' <<<"$questions" 2>/dev/null || echo 0)" -gt 0 ]]; then
             marker=question
-            numbered="$(jq -r 'to_entries | map("\(.key + 1). \(.value)") | join("\n")' <<<"$options")"
-            body="$(printf '%s\n\n**Question:** %s\n\n%s\n\n**Recommendation:** %s\n\nAnswer in a comment on this issue. The factory then starts again and treats your answer as binding.' \
-              "$body" "$question" "$numbered" "${recommendation:-none}")"
+            asked="$(jq -r 'to_entries | map(.key as $i | .value as $q
+              | "**Q\($i + 1): \($q.question)**\n\n"
+              + (if (($q.options // []) | length) > 0
+                 then ($q.options | to_entries | map("\(.key + 1). \(.value)") | join("\n")) + "\n\n"
+                 else "" end)
+              + "Recommended: \($q.recommendation)") | join("\n\n---\n\n")' <<<"$questions")"
+            body="$(printf '%s\n\n%s\n\nAnswer in a comment on this issue, for example "Q1: 2", or "yes" to accept every recommendation. The factory then starts again and treats your answer as binding.' \
+              "$body" "$asked")"
           fi
           gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label factory:running --add-label "$label"
           printf '<!-- factory:%s -->\n**Factory:** %s\n\nRun: %s\n' "$marker" "$body" "$RUN_URL" | gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file -

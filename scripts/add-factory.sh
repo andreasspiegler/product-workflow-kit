@@ -121,6 +121,6 @@ cp -R "$KIT_ROOT/skills/factory-run" "$TARGET/.claude/skills/factory-run"
 printf 'Installed factory mode (%s stack): .github/workflows/factory.yml, .factory/, .claude/skills/factory-run/\n' "$STACK"
 [[ "$STACK" != generic ]] || printf 'Next: configure .factory/setup.sh and .factory/check.sh; both fail until you do.\n'
 printf 'Next: complete the one-time setup in .factory/README.md (GitHub App, secret, labels, staging).\n'
-printf 'Record under "Operating mode" in PRODUCT.md, adjusting the values:\n\n'
-printf '  mode: factory\n  autonomy_ceiling: micro\n  merge: auto\n  deploy: human\n\n'
+printf 'Record under "Operating mode" in PRODUCT.md (start slow: pr-only until the factory earns trust):\n\n'
+printf '  mode: factory\n  autonomy_ceiling: micro\n  merge: pr-only\n  deploy: human\n\n'
 printf 'No remote settings, secrets, labels, or branch protection were changed.\n'

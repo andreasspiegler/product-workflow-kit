@@ -33,6 +33,22 @@ Check the issue for:
 
 Turn each material gap into a focused question, a measurable constraint, or an explicit assumption. Ask for a human decision when resolving the gap would materially alter scope, direction, risk, or cost.
 
+## Ask in rounds
+
+When a person must decide, ask in rounds rather than one question at a time. A round holds every open decision whose prerequisites are already settled. Number each question, give your recommended answer with a one-line reason, and word it so that "yes" accepts the recommendation. A question that depends on an answer from the same round waits for the next round. Find facts yourself from the code, the product context, and available tools; only decisions go to the person. Stop when nothing material is silently assumed, and confirm the shared understanding before acting on it.
+
+## Keep the domain language
+
+Read `GLOSSARY.md` in the product root when it exists. When a term in the issue or conversation conflicts with it, or a term is vague or overloaded ("account": customer or user?), say so immediately and propose the canonical term. When a product-specific term is settled, propose adding it to `GLOSSARY.md`, creating the file with its first term:
+
+```markdown
+**Order**:
+A request by a **Customer** to buy one or more products.
+_Avoid_: purchase, transaction
+```
+
+Keep each definition to one or two sentences about what the term is, bold other glossary terms, list rejected synonyms under `_Avoid_`, and leave out general programming concepts and implementation details. Group terms under subheadings only when clusters emerge.
+
 ## Structure only what helps
 
 Draft the result for the active GitHub Issue. Apply it to the issue only with explicit approval. Add or improve, as relevant:

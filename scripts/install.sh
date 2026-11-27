@@ -197,7 +197,7 @@ if [[ -z "$KIT_VERSION" ]]; then
 fi
 [[ -n "$KIT_VERSION" ]] || fail "could not determine kit version; pass --kit-version explicitly"
 
-CONTEXT_PATHS=(AGENTS.md PRODUCT.md DESIGN.md docs/decisions)
+CONTEXT_PATHS=(AGENTS.md PRODUCT.md DESIGN.md CODING_STANDARDS.md docs/decisions)
 if has_value claude "${RUNTIMES[@]}"; then
   CONTEXT_PATHS+=(CLAUDE.md)
 fi
@@ -263,6 +263,7 @@ if has_value claude "${RUNTIMES[@]}"; then
   cp "$KIT_ROOT/templates/product/CLAUDE.md" "$TARGET/CLAUDE.md"
 fi
 cp "$KIT_ROOT/templates/product/DESIGN.md" "$TARGET/DESIGN.md"
+cp "$KIT_ROOT/templates/product/CODING_STANDARDS.md" "$TARGET/CODING_STANDARDS.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/README.md" "$TARGET/docs/decisions/README.md"
 cp "$KIT_ROOT/templates/product/docs/decisions/TEMPLATE.md" "$TARGET/docs/decisions/TEMPLATE.md"
 
@@ -282,7 +283,7 @@ escaped_isolation="$(printf '%s' "$isolation_text" | sed 's/[\\&|]/\\&/g')"
 case "$MODE" in
   "") mode_lines=('Not decided yet. The `kickoff` skill asks; install factory mode with `scripts/add-factory.sh`.') ;;
   human-led) mode_lines=('mode: human-led' '' "Decided at install on $(date +%F). Reason: <!-- fill in -->") ;;
-  factory) mode_lines=('mode: factory' 'autonomy_ceiling: micro' 'merge: auto' 'deploy: human' '' "Installed $(date +%F) by \`scripts/install.sh\`. Reason: <!-- fill in -->") ;;
+  factory) mode_lines=('mode: factory' 'autonomy_ceiling: micro' 'merge: pr-only' 'deploy: human' '' "Installed $(date +%F) by \`scripts/install.sh\`. Reason: <!-- fill in -->") ;;
 esac
 product_tmp="$(mktemp "$TARGET/.product-workflow-kit.XXXXXX")"
 trap 'rm -f "$product_tmp" "$product_tmp.mode"' EXIT

@@ -55,7 +55,7 @@ mkdir -p "$TARGET"
   --kit-version smoke-test-version \
   > "$TEMP_ROOT/install-output.txt"
 
-for path in AGENTS.md CLAUDE.md PRODUCT.md DESIGN.md docs/decisions/README.md docs/decisions/TEMPLATE.md; do
+for path in AGENTS.md CLAUDE.md PRODUCT.md DESIGN.md CODING_STANDARDS.md docs/decisions/README.md docs/decisions/TEMPLATE.md; do
   assert_file "$TARGET/$path"
 done
 assert_contains "$TARGET/PRODUCT.md" 'version: "smoke-test-version"'
@@ -181,7 +181,7 @@ read_mode_value() {
 }
 [[ "$(read_mode_value mode)" == factory ]] || fail 'workflow cannot read mode from PRODUCT.md'
 [[ "$(read_mode_value autonomy_ceiling)" == micro ]] || fail 'workflow cannot read autonomy_ceiling from PRODUCT.md'
-[[ "$(read_mode_value merge)" == auto ]] || fail 'workflow cannot read merge from PRODUCT.md'
+[[ "$(read_mode_value merge)" == pr-only ]] || fail 'workflow cannot read merge from PRODUCT.md'
 [[ "$(read_mode_value deploy)" == human ]] || fail 'workflow cannot read deploy from PRODUCT.md'
 for workflow_key in mode autonomy_ceiling merge deploy; do
   [[ "$(grep -Ec "^$workflow_key:" "$FACTORY_TARGET/PRODUCT.md")" == 1 ]] || fail "PRODUCT.md must contain exactly one $workflow_key line"

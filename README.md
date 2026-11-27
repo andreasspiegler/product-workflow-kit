@@ -13,10 +13,12 @@ Workflow Kit (versioned Git repository)
         │ explicit local update
         ▼
 Product-local context (pinned kit commit)
-  ├── AGENTS.md       shared working agreement
-  ├── PRODUCT.md      outcome, scope, constraints, data, environments, success signal
-  ├── DESIGN.md       reusable experience and design direction
-  └── docs/decisions/ durable decisions and contracts
+  ├── AGENTS.md            shared working agreement
+  ├── PRODUCT.md           outcome, scope, constraints, data, environments, success signal
+  ├── DESIGN.md            reusable experience and design direction
+  ├── CODING_STANDARDS.md  judgement-call rules a review checks
+  ├── GLOSSARY.md          domain language, created with its first term
+  └── docs/decisions/      durable decisions and contracts
         │
         ▼
 Runtime adapters
@@ -225,6 +227,8 @@ These sources inform selected decision points in the kit. They are not bundled d
 | [Ponytail](https://github.com/dietrichgebert/ponytail) | Keeping implementation proportionate. | The kit adopts the implementation ladder, root-cause check, executable proof for nontrivial deterministic logic, and explicit upgrade triggers. `ponytail-review` and `ponytail-audit` are optional, project-local review aids — never an always-on plugin or a replacement for product, security, accessibility, or correctness review. |
 | [Vercel Web Interface Guidelines](https://vercel.com/design/guidelines) | Checking implemented web interfaces for concrete interaction, accessibility, responsive, and browser-quality risks. | `web-design-guidelines` is an optional, project-local code audit after implementation and before acceptance or release. It reviews changed UI files, records source/date/scope, and complements rather than replaces manual browser, product, or accessibility review. Vercel-specific copy and brand preferences are not adopted as product rules. |
 | [Playwright CLI](https://github.com/microsoft/playwright-cli) | Checking a focused web interaction in a browser when existing tools do not suffice or repeatable browser work would reduce risk. | `quality-release` treats it as an optional, product-local tool; record the enabled version and approval in `PRODUCT.md`. An interactive run records evidence for that run; durable regression protection requires a repeatable test with assertions. Neither CLI nor external skill is installed by the kit. |
+| [Matt Pocock's skills](https://github.com/mattpocock/skills) | Requirements interviews, domain language, review, and running a factory safely. | The kit adopts questions in rounds with recommended answers, a lazily created `GLOSSARY.md`, the three-part test for durable decisions, review on separate Spec and Standards axes with `CODING_STANDARDS.md` read at review time, the tautological-test check, and "start slow" for factory mode. The skills themselves are not installed. |
+| [Software Factory by AlexPEClub](https://github.com/AlexPEClub/software-factory) | Factory mode. | The kit adopts hidden acceptance tests the build stage never sees, questions with options and a restart on the answer, bounded rework rounds, agents that only see trusted comments, and an explicit assumptions and confidence line in factory pull requests. It keeps GitHub-hosted runners instead of a self-hosted server. |
 | [Karpathy guidelines](https://github.com/multica-ai/andrej-karpathy-skills) | Keeping diffs scoped to the request. | The kit adopts only the surgical-changes rule: no drive-by refactoring or reformatting, report unrelated dead code instead of deleting it, and trace every changed line to the work item. Its other rules are already covered by `requirements-quality` and the implementation ladder; its "fewer lines" heuristic is not adopted because simplicity is not a line-count target. It is not installed as a skill. |
 
 The links are sources and implementation references, not recommendations to install every skill. The product-local kit remains the source of truth for which workflows are available in a product.

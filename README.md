@@ -130,7 +130,7 @@ Each product also decides who resolves the human gates in day-to-day work. `kick
 | Mode | What happens |
 | --- | --- |
 | `human-led` | Default. A person decides at every gate; agents create evidence. |
-| `factory` | Labelling an issue `factory:ready` starts a GitHub Actions workflow: Claude writes protected acceptance tests, implements and opens a pull request, a deterministic stage re-runs every check and rejects changes to protected paths or dependencies, a second Claude pass reviews with a fresh context, and the workflow merges and optionally deploys to staging. Work above the autonomy ceiling, and every gate the factory may not take, comes back labelled `factory:needs-human`. |
+| `factory` | Labelling an issue `factory:ready` starts a GitHub Actions workflow: Claude writes visible acceptance tests and hidden tests, implements and opens a pull request without seeing the hidden tests, a deterministic stage re-runs every check including the hidden tests and rejects changes to protected paths or dependencies, a second Claude pass reviews with a fresh context, and the workflow merges and optionally deploys to staging. Failed checks or reviews go back for up to two rework rounds. Work above the autonomy ceiling, and every gate the factory may not take, comes back labelled `factory:needs-human` with a question and options; answering in the issue restarts the factory. Agents only see comments from people with write access. |
 
 ```bash
 ./scripts/install.sh --target ../my-product --runtime claude --sandbox container --mode factory --stack node

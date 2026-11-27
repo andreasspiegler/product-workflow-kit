@@ -16,7 +16,9 @@ only project-local files, never overwrites, and changes no remote settings.
 Installs:
   .github/workflows/factory.yml   the factory workflow (Claude Code GitHub Action)
   .factory/setup.sh               toolchain and dependency setup for checks
-  .factory/check.sh               all tests, including tests/acceptance/
+  .factory/check.sh               all tests, including tests/acceptance/ and the
+                                  hidden tests the factory adds under tests/holdout/
+  .factory/context.sh             writes the trusted issue context for the agents
   .factory/README.md              one-time setup checklist and limits
   .claude/skills/factory-run/     the headless stage instructions
 
@@ -85,7 +87,7 @@ uv sync"
   generic)
     SETUP_BODY="echo 'Configure .factory/setup.sh: install the toolchain and dependencies.' >&2
 exit 1"
-    CHECK_BODY="echo 'Configure .factory/check.sh: run every test, including tests/acceptance/.' >&2
+    CHECK_BODY="echo 'Configure .factory/check.sh: run every test, including tests/acceptance/ and tests/holdout/.' >&2
 exit 1"
     ;;
 esac
@@ -106,11 +108,13 @@ write_script() {
 mkdir -p "$TARGET/.github/workflows" "$TARGET/.factory" "$TARGET/.claude/skills"
 cp "$TEMPLATES/factory.yml" "$TARGET/.github/workflows/factory.yml"
 cp "$TEMPLATES/README.md" "$TARGET/.factory/README.md"
+cp "$TEMPLATES/context.sh" "$TARGET/.factory/context.sh"
+chmod +x "$TARGET/.factory/context.sh"
 write_script "$TARGET/.factory/setup.sh" \
   "Installs the toolchain and dependencies. Runs outside the agent sandbox, before each stage and in verify." \
   "$SETUP_BODY"
 write_script "$TARGET/.factory/check.sh" \
-  "Runs every test, including tests/acceptance/. Must exit non-zero on any failure." \
+  "Runs every test, including tests/acceptance/ and tests/holdout/. Must exit non-zero on any failure." \
   "$CHECK_BODY"
 cp -R "$KIT_ROOT/skills/factory-run" "$TARGET/.claude/skills/factory-run"
 

@@ -62,7 +62,7 @@ Ask once who resolves the human gates in day-to-day work, unless `PRODUCT.md` al
 
 For `factory`, agree on four values and record them as separate lines under "Operating mode" in `PRODUCT.md`: `mode: factory`; `autonomy_ceiling` (`nano`, `micro`, or `standard`; recommend `micro` to start); `merge` (`auto` or `pr-only`); `deploy` (`staging-auto` or `human`). Production deployment always stays human. Factory mode needs agent isolation at level `agent` or `container` first. Install it with `scripts/add-factory.sh --target <product>` from the kit checkout (`install.sh --mode factory` does the same at install time), then walk the user through the one-time setup in `.factory/README.md`: GitHub App, secret, labels, `.factory/setup.sh` and `.factory/check.sh`, and the staging workflow. Creating labels, secrets, or repository variables are external changes and need approval.
 
-Name the limits honestly: the factory decides only as well as the acceptance criteria and checks allow; its acceptance tests are a protected contract, not a hidden test set; and issue text reaches the agent as input, so use it where only trusted people write issues.
+Name the limits honestly: the factory decides only as well as the acceptance criteria and checks allow; its hidden tests catch implementations tailored to the visible ones, but not requirements nobody wrote down; and the issue body reaches the agents as input, so use it where you trust the people who write issues. Comments from people without write access are filtered out.
 
 For calibration on depth and tone, read `examples/microsite/` in the workflow kit checkout — a small, filled-in `PRODUCT.md`, `DESIGN.md`, and decision record. Use it as a reference for how much a section needs, not as text to copy.
 

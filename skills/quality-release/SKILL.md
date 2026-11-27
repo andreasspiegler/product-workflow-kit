@@ -67,7 +67,7 @@ For a high-risk change — authentication, payments, personal data, a migration,
 
 ## Factory mode
 
-In a product with `mode: factory`, the factory workflow applies this skill without a human: the build stage writes the verification record into the pull request, a deterministic stage re-runs all checks and guards protected paths, and a separate review stage with a fresh context judges the change. These high-risk categories are always escalated by the factory rather than verified by it. The release rules below still hold: the factory may deploy to staging only when `PRODUCT.md` allows it, never to production, and the outcome check after release stays with a person.
+In a product with `mode: factory`, the factory workflow applies this skill without a human: the spec stage writes visible acceptance tests and hidden tests the build stage never sees, the build stage writes the verification record with its assumptions and confidence into the pull request, a deterministic stage re-runs all checks including the hidden tests and guards protected paths, and a separate review stage with a fresh context judges the change. Failed verification or review goes back to the build stage for a limited number of rework rounds before a person decides. These high-risk categories are always escalated by the factory rather than verified by it. The release rules below still hold: the factory may deploy to staging only when `PRODUCT.md` allows it, never to production, and the outcome check after release stays with a person.
 
 ## Motion and 3D verification
 
